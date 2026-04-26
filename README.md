@@ -42,17 +42,22 @@ This repository contains the source files. Because Xcode project formats are pro
    - `Privacy - Health Share Usage Description`: "Febus Health Sync needs access to your workouts to back them up to your private database."
    - `Privacy - Health Update Usage Description`: "Febus Health Sync needs access to your workouts to back them up to your private database."
 4. Add the **Google Sign-In URL Scheme**:
-   - In the **Info** tab, scroll down to **URL Types**, click **+**.
-   - Open your `GoogleService-Info.plist` and copy the value of `REVERSED_CLIENT_ID`.
-   - Paste it into the **URL Schemes** field.
+   - In Xcode, click your project in the Project Navigator, select your target, and go to the **Info** tab.
+   - Scroll down to **URL Types** and click the **+** button.
+   - In the **URL Schemes** field, paste your `REVERSED_CLIENT_ID` (e.g., `com.googleusercontent.apps.215284107318-xxxxxxxxxxxxxxx`).
+   - Leave the Role as `Editor` and Identifier blank.
 
-### Step 5: Install Dependencies (SPM)
-1. Go to **File** > **Add Package Dependencies...**
-2. Search for and add:
-   - `firebase-ios-sdk` (from `https://github.com/firebase/firebase-ios-sdk`)
-     - Select: `FirebaseAuth`, `FirebaseFirestore`, `FirebaseFirestoreSwift`
-   - `GoogleSignIn-iOS` (from `https://github.com/google/GoogleSignIn-iOS`)
-     - Select: `GoogleSignIn`, `GoogleSignInSwift`
+### Step 5: Install Dependencies via Swift Package Manager
+To confirm FirebaseAuth, Firestore, and GoogleSignIn are correctly installed:
+1. In Xcode, go to **File** > **Add Package Dependencies...**
+2. Search for `https://github.com/firebase/firebase-ios-sdk`
+   - Select **Up to Next Major Version** (e.g., 10.0.0 or 11.0.0).
+   - Click **Add Package**.
+   - Check `FirebaseAuth`, `FirebaseFirestore`, and `FirebaseFirestoreSwift`.
+3. Search for `https://github.com/google/GoogleSignIn-iOS`
+   - Select **Up to Next Major Version** (e.g., 7.0.0).
+   - Click **Add Package**.
+   - Check `GoogleSignIn` and `GoogleSignInSwift`.
 
 ### Step 6: Deploy Firebase Backend
 1. Open your terminal and navigate to the `firebase` folder in this repo.

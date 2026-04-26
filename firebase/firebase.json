@@ -17,5 +17,13 @@
         "npm --prefix \"$RESOURCE_DIR\" run build"
       ]
     }
-  ]
+  ],
+  "auth": {
+    "providers": {
+      "googleSignIn": {
+        "oAuthBrandDisplayName": "Febus Health Sync",
+        "supportEmail": "thomas.f@febus.ai"
+      }
+    }
+  }
 }
