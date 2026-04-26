@@ -44,7 +44,7 @@ This repository contains the source files. Because Xcode project formats are pro
 4. Add the **Google Sign-In URL Scheme**:
    - In Xcode, click your project in the Project Navigator, select your target, and go to the **Info** tab.
    - Scroll down to **URL Types** and click the **+** button.
-   - In the **URL Schemes** field, paste your `REVERSED_CLIENT_ID` (e.g., `com.googleusercontent.apps.215284107318-xxxxxxxxxxxxxxx`).
+   - In the **URL Schemes** field, paste your `REVERSED_CLIENT_ID`: `com.googleusercontent.apps.215284107318-uovr3f9e9l21it9g168f8eul61e0f0j4`.
    - Leave the Role as `Editor` and Identifier blank.
 
 ### Step 5: Install Dependencies via Swift Package Manager
