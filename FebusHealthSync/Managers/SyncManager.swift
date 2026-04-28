@@ -8,6 +8,8 @@ class SyncManager: ObservableObject {
     @Published var syncStatusMessage: String = "Idle"
     @Published var syncedWorkoutsCount: Int = 0
     @Published var syncLogs: [String] = []
+    @Published var todaySummary: DailySummary?
+    
     
     let healthKitService: HealthKitService
     private let firestoreService: FirestoreService
@@ -90,11 +92,57 @@ class SyncManager: ObservableObject {
                 syncedWorkoutsCount += workoutDataArray.count
             }
             
+            let calendar = Calendar.current
+            log("Fetching daily summaries for the last \(daysBack) days...")
+            for i in 0...daysBack {
+                guard let targetDate = calendar.date(byAdding: .day, value: -i, to: Date()) else { continue }
+                
+                let stats = await healthKitService.fetchDailyQuantityStats(for: targetDate)
+                let dateString = formatDate(targetDate)
+                
+                let dayWorkouts = workoutDataArray.filter { calendar.isDate($0.startDate, inSameDayAs: targetDate) }
+                
+                let runningWorkouts = dayWorkouts.filter { $0.workoutActivityType == 37 } // Running
+                let totalWorkoutDuration = dayWorkouts.reduce(0) { $0 + $1.durationSeconds }
+                let runningDistance = runningWorkouts.compactMap { $0.totalDistanceMeters }.reduce(0, +)
+                let cyclingDistance = dayWorkouts.filter { $0.workoutActivityType == 13 }.compactMap { $0.totalDistanceMeters }.reduce(0, +)
+                
+                let summary = DailySummary(
+                    date: dateString,
+                    totalWorkouts: dayWorkouts.count,
+                    runningWorkouts: runningWorkouts.count,
+                    runningDistanceMeters: runningDistance,
+                    walkingDistanceMeters: stats.walkingDistanceMeters,
+                    cyclingDistanceMeters: cyclingDistance,
+                    totalWorkoutDurationSeconds: totalWorkoutDuration,
+                    totalActiveEnergyKcal: stats.totalActiveEnergyKcal,
+                    totalSteps: stats.totalSteps,
+                    avgHeartRate: stats.avgHeartRate,
+                    restingHeartRate: stats.restingHeartRate,
+                    createdAt: Date(),
+                    updatedAt: Date()
+                )
+                
+                try await firestoreService.upsertDailySummary(userId: user.uid, summary: summary)
+                
+                if i == 0 {
+                    DispatchQueue.main.async {
+                        self.todaySummary = summary
+                    }
+                }
+            }
+            
             lastSyncTime = Date()
             log("Sync completed successfully.")
             
         } catch {
             log("Sync Error: \(error.localizedDescription)")
         }
+    }
+    
+    private func formatDate(_ date: Date) -> String {
+        let formatter = DateFormatter()
+        formatter.dateFormat = "yyyy-MM-dd"
+        return formatter.string(from: date)
     }
 }

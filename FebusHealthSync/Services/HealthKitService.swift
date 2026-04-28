@@ -69,4 +69,74 @@ class HealthKitService {
             completion(success, error)
         }
     }
+    
+    // MARK: - Daily Quantity Fetching
+    
+    func fetchDailyQuantity(type: HKQuantityType, start: Date, end: Date, options: HKStatisticsOptions) async throws -> HKStatistics? {
+        let predicate = HKQuery.predicateForSamples(withStart: start, end: end, options: .strictStartDate)
+        return try await withCheckedThrowingContinuation { continuation in
+            let query = HKStatisticsQuery(quantityType: type, quantitySamplePredicate: predicate, options: options) { _, statistics, error in
+                if let error = error {
+                    continuation.resume(throwing: error)
+                    return
+                }
+                continuation.resume(returning: statistics)
+            }
+            healthStore.execute(query)
+        }
+    }
+    
+    func fetchDailyQuantityStats(for date: Date) async -> DailyQuantityStats {
+        let calendar = Calendar.current
+        let start = calendar.startOfDay(for: date)
+        guard let end = calendar.date(byAdding: .day, value: 1, to: start) else { return DailyQuantityStats() }
+        
+        var stats = DailyQuantityStats()
+        
+        // Steps
+        if let stepType = HKObjectType.quantityType(forIdentifier: .stepCount),
+           let result = try? await fetchDailyQuantity(type: stepType, start: start, end: end, options: .cumulativeSum),
+           let sum = result?.sumQuantity() {
+            stats.totalSteps = Int(sum.doubleValue(for: HKUnit.count()))
+        }
+        
+        // Active Energy
+        if let energyType = HKObjectType.quantityType(forIdentifier: .activeEnergyBurned),
+           let result = try? await fetchDailyQuantity(type: energyType, start: start, end: end, options: .cumulativeSum),
+           let sum = result?.sumQuantity() {
+            stats.totalActiveEnergyKcal = sum.doubleValue(for: HKUnit.kilocalorie())
+        }
+        
+        // Walking Distance
+        if let distType = HKObjectType.quantityType(forIdentifier: .distanceWalkingRunning),
+           let result = try? await fetchDailyQuantity(type: distType, start: start, end: end, options: .cumulativeSum),
+           let sum = result?.sumQuantity() {
+            stats.walkingDistanceMeters = sum.doubleValue(for: HKUnit.meter())
+        }
+        
+        // Avg HR
+        if let hrType = HKObjectType.quantityType(forIdentifier: .heartRate),
+           let result = try? await fetchDailyQuantity(type: hrType, start: start, end: end, options: .discreteAverage),
+           let avg = result?.averageQuantity() {
+            stats.avgHeartRate = avg.doubleValue(for: HKUnit(from: "count/min"))
+        }
+        
+        // Resting HR
+        if let restHrType = HKObjectType.quantityType(forIdentifier: .restingHeartRate),
+           let result = try? await fetchDailyQuantity(type: restHrType, start: start, end: end, options: .discreteAverage),
+           let avg = result?.averageQuantity() {
+            stats.restingHeartRate = avg.doubleValue(for: HKUnit(from: "count/min"))
+        }
+        
+        return stats
+    }
 }
+
+struct DailyQuantityStats {
+    var totalSteps: Int = 0
+    var totalActiveEnergyKcal: Double = 0
+    var walkingDistanceMeters: Double = 0
+    var avgHeartRate: Double? = nil
+    var restingHeartRate: Double? = nil
+}
+

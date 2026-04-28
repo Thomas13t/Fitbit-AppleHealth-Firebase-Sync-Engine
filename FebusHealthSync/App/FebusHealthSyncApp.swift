@@ -39,7 +39,7 @@ struct FebusHealthSyncApp: App {
     var body: some Scene {
         WindowGroup {
             if authService.isAuthenticated {
-                HomeDashboardView()
+                WorkoutListView()
                     .environmentObject(authService)
                     .environmentObject(syncManager)
                     .task {

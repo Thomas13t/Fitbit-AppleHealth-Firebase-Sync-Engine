@@ -21,6 +21,48 @@ struct HomeDashboardView: View {
                     }
                 }
                 
+                Section("Today's Overview") {
+                    if let summary = syncManager.todaySummary {
+                        HStack {
+                            Image(systemName: "shoeprints.fill")
+                                .foregroundColor(.orange)
+                            Text("Steps")
+                            Spacer()
+                            Text("\(summary.totalSteps)")
+                                .fontWeight(.bold)
+                        }
+                        HStack {
+                            Image(systemName: "flame.fill")
+                                .foregroundColor(.red)
+                            Text("Active Energy")
+                            Spacer()
+                            Text("\(Int(summary.totalActiveEnergyKcal)) kcal")
+                                .fontWeight(.bold)
+                        }
+                        if let rhr = summary.restingHeartRate, rhr > 0 {
+                            HStack {
+                                Image(systemName: "heart.fill")
+                                    .foregroundColor(.pink)
+                                Text("Resting HR")
+                                Spacer()
+                                Text("\(Int(rhr)) bpm")
+                                    .fontWeight(.bold)
+                            }
+                        }
+                        HStack {
+                            Image(systemName: "figure.run")
+                                .foregroundColor(.cyan)
+                            Text("Workouts")
+                            Spacer()
+                            Text("\(summary.totalWorkouts)")
+                                .fontWeight(.bold)
+                        }
+                    } else {
+                        Text("No data for today yet. Try manual sync.")
+                            .foregroundColor(.secondary)
+                    }
+                }
+                
                 Section("Sync Status") {
                     HStack {
                         Text("Status:")
