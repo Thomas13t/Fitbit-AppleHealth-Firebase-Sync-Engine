@@ -29,9 +29,10 @@ struct LoginView: View {
                 // Using standard GoogleSignIn Button
                 GoogleSignInButton(scheme: .dark, style: .wide, state: .normal) {
                     Task {
-                        guard let windowScene = UIApplication.shared.connectedScenes.first as? UIWindowScene,
-                              let window = windowScene.windows.first,
+                        guard let windowScene = UIApplication.shared.connectedScenes.first(where: { $0.activationState == .foregroundActive }) as? UIWindowScene,
+                              let window = windowScene.windows.first(where: \.isKeyWindow),
                               let rootViewController = window.rootViewController else {
+                            print("Error: Could not find root view controller")
                             return
                         }
                         

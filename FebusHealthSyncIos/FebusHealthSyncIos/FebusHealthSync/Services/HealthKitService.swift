@@ -1,10 +1,10 @@
 import Foundation
 import HealthKit
-import Combine
 
 class HealthKitService {
     let healthStore = HKHealthStore()
     
+    // Define the types we want to read
     private let typesToRead: Set<HKObjectType> = [
         HKObjectType.workoutType(),
         HKObjectType.quantityType(forIdentifier: .heartRate)!,
@@ -17,42 +17,23 @@ class HealthKitService {
     
     func requestAuthorization() async throws {
         guard HKHealthStore.isHealthDataAvailable() else {
-            throw NSError(
-                domain: "HealthKitService",
-                code: 0,
-                userInfo: [NSLocalizedDescriptionKey: "HealthKit is not available on this device."]
-            )
+            throw NSError(domain: "HealthKitService", code: 0, userInfo: [NSLocalizedDescriptionKey: "HealthKit is not available on this device."])
         }
-        
         try await healthStore.requestAuthorization(toShare: [], read: typesToRead)
     }
     
     func fetchWorkouts(daysBack: Int) async throws -> [HKWorkout] {
         let calendar = Calendar.current
         let endDate = Date()
-        
         guard let startDate = calendar.date(byAdding: .day, value: -daysBack, to: endDate) else {
             return []
         }
         
-        let predicate = HKQuery.predicateForSamples(
-            withStart: startDate,
-            end: endDate,
-            options: .strictStartDate
-        )
-        
-        let sortDescriptor = NSSortDescriptor(
-            key: HKSampleSortIdentifierEndDate,
-            ascending: false
-        )
+        let predicate = HKQuery.predicateForSamples(withStart: startDate, end: endDate, options: .strictStartDate)
+        let sortDescriptor = NSSortDescriptor(key: HKSampleSortIdentifierEndDate, ascending: false)
         
         return try await withCheckedThrowingContinuation { continuation in
-            let query = HKSampleQuery(
-                sampleType: HKObjectType.workoutType(),
-                predicate: predicate,
-                limit: HKObjectQueryNoLimit,
-                sortDescriptors: [sortDescriptor]
-            ) { _, samples, error in
+            let query = HKSampleQuery(sampleType: HKObjectType.workoutType(), predicate: predicate, limit: HKObjectQueryNoLimit, sortDescriptors: [sortDescriptor]) { _, samples, error in
                 if let error = error {
                     continuation.resume(throwing: error)
                     return
@@ -61,7 +42,6 @@ class HealthKitService {
                 let workouts = samples as? [HKWorkout] ?? []
                 continuation.resume(returning: workouts)
             }
-            
             healthStore.execute(query)
         }
     }
@@ -69,44 +49,94 @@ class HealthKitService {
     func setupBackgroundDelivery(completion: @escaping (Bool, Error?) -> Void) {
         let workoutType = HKObjectType.workoutType()
         
-        let query = HKObserverQuery(sampleType: workoutType, predicate: nil) { _, completionHandler, error in
+        // Register observer query
+        let query = HKObserverQuery(sampleType: workoutType, predicate: nil) { [weak self] query, completionHandler, error in
             guard error == nil else {
                 print("Observer query failed: \(error!.localizedDescription)")
-                completionHandler()
                 return
             }
+            // Trigger sync manager to fetch new workouts
+            NotificationCenter.default.post(name: NSNotification.Name("HKWorkoutDataUpdated"), object: nil)
             
-            NotificationCenter.default.post(
-                name: NSNotification.Name("HKWorkoutDataUpdated"),
-                object: nil
-            )
-            
+            // Must call completion handler
             completionHandler()
         }
         
         healthStore.execute(query)
         
+        // Enable background delivery
         healthStore.enableBackgroundDelivery(for: workoutType, frequency: .immediate) { success, error in
             completion(success, error)
         }
     }
-}
-
-extension HKWorkoutActivityType {
-    var name: String {
-        switch self {
-        case .running: return "running"
-        case .walking: return "walking"
-        case .cycling: return "cycling"
-        case .traditionalStrengthTraining: return "strength_training"
-        case .functionalStrengthTraining: return "functional_strength_training"
-        case .yoga: return "yoga"
-        case .hiking: return "hiking"
-        case .swimming: return "swimming"
-        case .coreTraining: return "core_training"
-        case .elliptical: return "elliptical"
-        case .other: return "other"
-        default: return "unknown_\(self.rawValue)"
+    
+    // MARK: - Daily Quantity Fetching
+    
+    func fetchDailyQuantity(type: HKQuantityType, start: Date, end: Date, options: HKStatisticsOptions) async throws -> HKStatistics? {
+        let predicate = HKQuery.predicateForSamples(withStart: start, end: end, options: .strictStartDate)
+        return try await withCheckedThrowingContinuation { continuation in
+            let query = HKStatisticsQuery(quantityType: type, quantitySamplePredicate: predicate, options: options) { _, statistics, error in
+                if let error = error {
+                    continuation.resume(throwing: error)
+                    return
+                }
+                continuation.resume(returning: statistics)
+            }
+            healthStore.execute(query)
         }
     }
+    
+    func fetchDailyQuantityStats(for date: Date) async -> DailyQuantityStats {
+        let calendar = Calendar.current
+        let start = calendar.startOfDay(for: date)
+        guard let end = calendar.date(byAdding: .day, value: 1, to: start) else { return DailyQuantityStats() }
+        
+        var stats = DailyQuantityStats()
+        
+        // Steps
+        if let stepType = HKObjectType.quantityType(forIdentifier: .stepCount),
+           let result = try? await fetchDailyQuantity(type: stepType, start: start, end: end, options: .cumulativeSum),
+           let sum = result.sumQuantity() {
+            stats.totalSteps = Int(sum.doubleValue(for: HKUnit.count()))
+        }
+        
+        // Active Energy
+        if let energyType = HKObjectType.quantityType(forIdentifier: .activeEnergyBurned),
+           let result = try? await fetchDailyQuantity(type: energyType, start: start, end: end, options: .cumulativeSum),
+           let sum = result.sumQuantity() {
+            stats.totalActiveEnergyKcal = sum.doubleValue(for: HKUnit.kilocalorie())
+        }
+        
+        // Walking Distance
+        if let distType = HKObjectType.quantityType(forIdentifier: .distanceWalkingRunning),
+           let result = try? await fetchDailyQuantity(type: distType, start: start, end: end, options: .cumulativeSum),
+           let sum = result.sumQuantity() {
+            stats.walkingDistanceMeters = sum.doubleValue(for: HKUnit.meter())
+        }
+        
+        // Avg HR
+        if let hrType = HKObjectType.quantityType(forIdentifier: .heartRate),
+           let result = try? await fetchDailyQuantity(type: hrType, start: start, end: end, options: .discreteAverage),
+           let avg = result.averageQuantity() {
+            stats.avgHeartRate = avg.doubleValue(for: HKUnit(from: "count/min"))
+        }
+        
+        // Resting HR
+        if let restHrType = HKObjectType.quantityType(forIdentifier: .restingHeartRate),
+           let result = try? await fetchDailyQuantity(type: restHrType, start: start, end: end, options: .discreteAverage),
+           let avg = result.averageQuantity() {
+            stats.restingHeartRate = avg.doubleValue(for: HKUnit(from: "count/min"))
+        }
+        
+        return stats
+    }
 }
+
+struct DailyQuantityStats {
+    var totalSteps: Int = 0
+    var totalActiveEnergyKcal: Double = 0
+    var walkingDistanceMeters: Double = 0
+    var avgHeartRate: Double? = nil
+    var restingHeartRate: Double? = nil
+}
+

@@ -3,7 +3,6 @@ import FirebaseAuth
 import GoogleSignIn
 import FirebaseCore
 import Combine
-
 @MainActor
 class AuthService: ObservableObject {
     @Published var currentUser: User?
