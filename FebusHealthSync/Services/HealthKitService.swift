@@ -50,7 +50,7 @@ class HealthKitService {
         let workoutType = HKObjectType.workoutType()
         
         // Register observer query
-        let query = HKObserverQuery(sampleType: workoutType, predicate: nil) { [weak self] query, completionHandler, error in
+        let query = HKObserverQuery(sampleType: workoutType, predicate: nil) { _, completionHandler, error in
             guard error == nil else {
                 print("Observer query failed: \(error!.localizedDescription)")
                 return

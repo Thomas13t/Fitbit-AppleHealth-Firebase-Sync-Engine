@@ -79,7 +79,7 @@ class SyncManager: ObservableObject {
                     endDate: workout.endDate,
                     durationSeconds: workout.duration,
                     totalDistanceMeters: workout.totalDistance?.doubleValue(for: HKUnit.meter()),
-                    totalEnergyBurnedKcal: workout.totalEnergyBurned?.doubleValue(for: HKUnit.kilocalorie()),
+                    totalEnergyBurnedKcal: workout.statistics(for: HKObjectType.quantityType(forIdentifier: .activeEnergyBurned)!)?.sumQuantity()?.doubleValue(for: HKUnit.kilocalorie()),
                     metadata: workout.metadata as? [String: String],
                     createdAt: Date(),
                     updatedAt: Date(),

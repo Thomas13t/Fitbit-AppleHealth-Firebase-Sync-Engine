@@ -11,7 +11,7 @@ class AuthService: ObservableObject {
     init() {
         self.currentUser = Auth.auth().currentUser
         
-        Auth.auth().addStateDidChangeListener { [weak self] _, user in
+        _ = Auth.auth().addStateDidChangeListener { [weak self] _, user in
             DispatchQueue.main.async {
                 self?.currentUser = user
             }
