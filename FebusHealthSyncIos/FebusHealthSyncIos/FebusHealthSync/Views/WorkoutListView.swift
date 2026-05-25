@@ -217,6 +217,19 @@ struct WorkoutCardView: View {
                         .foregroundColor(.white)
                 }
                 
+                if let dist = workout.totalDistanceMeters, dist > 0, [13, 37, 52].contains(workout.workoutActivityType) {
+                    HStack(spacing: 4) {
+                        Image(systemName: "ruler")
+                            .font(.caption2)
+                            .foregroundColor(.green)
+                        let km = dist / 1000
+                        Text(km >= 1 ? String(format: "%.2f km", km) : "\(Int(dist)) m")
+                            .font(.subheadline)
+                            .fontWeight(.semibold)
+                            .foregroundColor(.green)
+                    }
+                }
+
                 if let cals = workout.totalEnergyBurnedKcal, cals > 0 {
                     HStack(spacing: 4) {
                         Image(systemName: "flame.fill")
