@@ -5,7 +5,7 @@
 	<key>NSHealthShareUsageDescription</key>
 	<string>Febus Health Sync reads your Health workout, heart rate, steps, distance, energy, and VO2 max data to sync and summarize your fitness activity.</string>
 	<key>NSHealthUpdateUsageDescription</key>
-	<string>Febus Health Sync does not write Health data.</string>
+	<string>Febus Health Sync writes sleep data imported from external sources like Fitbit into your Apple Health database.</string>
 	<key>CFBundleURLTypes</key>
 	<array>
 		<dict>
@@ -18,11 +18,25 @@
 				<string>com.googleusercontent.apps.215284107318-22qlq74hp88c8npccgq6ng23aeidar65</string>
 			</array>
 		</dict>
+		<dict>
+			<key>CFBundleTypeRole</key>
+			<string>Editor</string>
+			<key>CFBundleURLName</key>
+			<string>Fitbit OAuth</string>
+			<key>CFBundleURLSchemes</key>
+			<array>
+				<string>febushealthsync</string>
+			</array>
+		</dict>
 	</array>
 	<key>UIBackgroundModes</key>
 	<array>
 		<string>fetch</string>
 		<string>processing</string>
+	</array>
+	<key>BGTaskSchedulerPermittedIdentifiers</key>
+	<array>
+		<string>com.febus.healthsync.refresh</string>
 	</array>
 </dict>
 </plist>

@@ -13,14 +13,32 @@
 		F5178B5F2F9E8EC4001A27CE /* FirebaseAuth in Frameworks */ = {isa = PBXBuildFile; productRef = F5178B5E2F9E8EC4001A27CE /* FirebaseAuth */; };
 		F5178B612F9E8ED2001A27CE /* FirebaseFirestore in Frameworks */ = {isa = PBXBuildFile; productRef = F5178B602F9E8ED2001A27CE /* FirebaseFirestore */; };
 		F56FFB3B2F9EAC330008F29F /* GoogleService-Info.plist in Resources */ = {isa = PBXBuildFile; fileRef = F56FFB3A2F9EAC330008F29F /* GoogleService-Info.plist */; };
+		F5835A972FCB416D00C8D4DB /* (null) in Frameworks */ = {isa = PBXBuildFile; };
+		F5835A982FCB416D00C8D4DB /* (null) in Frameworks */ = {isa = PBXBuildFile; };
+		F5835A992FCB416D00C8D4DB /* (null) in Frameworks */ = {isa = PBXBuildFile; };
+		F5835A9A2FCB416D00C8D4DB /* (null) in Frameworks */ = {isa = PBXBuildFile; };
+		F5835A9B2FCB416D00C8D4DB /* (null) in Frameworks */ = {isa = PBXBuildFile; };
+		F5835A9C2FCB416D00C8D4DB /* GoogleSignIn in Frameworks */ = {isa = PBXBuildFile; productRef = F5178B572F9E8D57001A27CE /* GoogleSignIn */; };
+		F5835A9D2FCB416D00C8D4DB /* GoogleSignInSwift in Frameworks */ = {isa = PBXBuildFile; productRef = F5178B592F9E8D57001A27CE /* GoogleSignInSwift */; };
+		F5835A9E2FCB416D00C8D4DB /* FirebaseCore in Frameworks */ = {isa = PBXBuildFile; productRef = F5178B5C2F9E8EBF001A27CE /* FirebaseCore */; };
+		F5835A9F2FCB416D00C8D4DB /* FirebaseAuth in Frameworks */ = {isa = PBXBuildFile; productRef = F5178B5E2F9E8EC4001A27CE /* FirebaseAuth */; };
+		F5835AA02FCB416D00C8D4DB /* FirebaseFirestore in Frameworks */ = {isa = PBXBuildFile; productRef = F5178B602F9E8ED2001A27CE /* FirebaseFirestore */; };
 /* End PBXBuildFile section */
 
 /* Begin PBXFileReference section */
 		F5178B292F9E88B3001A27CE /* FebusHealthSyncIos.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = FebusHealthSyncIos.app; sourceTree = BUILT_PRODUCTS_DIR; };
+		F5178C292F9E88B3001A27CE /* FebusHealthSyncUniversal.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = FebusHealthSyncUniversal.app; sourceTree = BUILT_PRODUCTS_DIR; };
 		F56FFB3A2F9EAC330008F29F /* GoogleService-Info.plist */ = {isa = PBXFileReference; lastKnownFileType = text.plist.xml; path = "GoogleService-Info.plist"; sourceTree = "<group>"; };
 /* End PBXFileReference section */
 
 /* Begin PBXFileSystemSynchronizedBuildFileExceptionSet section */
+		F56FFB332F9EA3440008F290 /* Exceptions for "FebusHealthSyncIos" folder in "FebusHealthSyncUniversal" target */ = {
+			isa = PBXFileSystemSynchronizedBuildFileExceptionSet;
+			membershipExceptions = (
+				Info.plist,
+			);
+			target = F5178C282F9E88B3001A27CE /* FebusHealthSyncUniversal */;
+		};
 		F56FFB332F9EA3440008F29F /* Exceptions for "FebusHealthSyncIos" folder in "FebusHealthSyncIos" target */ = {
 			isa = PBXFileSystemSynchronizedBuildFileExceptionSet;
 			membershipExceptions = (
@@ -35,6 +53,7 @@
 			isa = PBXFileSystemSynchronizedRootGroup;
 			exceptions = (
 				F56FFB332F9EA3440008F29F /* Exceptions for "FebusHealthSyncIos" folder in "FebusHealthSyncIos" target */,
+				F56FFB332F9EA3440008F290 /* Exceptions for "FebusHealthSyncIos" folder in "FebusHealthSyncUniversal" target */,
 			);
 			path = FebusHealthSyncIos;
 			sourceTree = "<group>";
@@ -51,6 +70,23 @@
 				F5178B5A2F9E8D57001A27CE /* GoogleSignInSwift in Frameworks */,
 				F5178B612F9E8ED2001A27CE /* FirebaseFirestore in Frameworks */,
 				F5178B5F2F9E8EC4001A27CE /* FirebaseAuth in Frameworks */,
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+		F5178C262F9E88B3001A27CE /* Frameworks */ = {
+			isa = PBXFrameworksBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+				F5835A972FCB416D00C8D4DB /* (null) in Frameworks */,
+				F5835A982FCB416D00C8D4DB /* (null) in Frameworks */,
+				F5835A9D2FCB416D00C8D4DB /* GoogleSignInSwift in Frameworks */,
+				F5835AA02FCB416D00C8D4DB /* FirebaseFirestore in Frameworks */,
+				F5835A992FCB416D00C8D4DB /* (null) in Frameworks */,
+				F5835A9F2FCB416D00C8D4DB /* FirebaseAuth in Frameworks */,
+				F5835A9A2FCB416D00C8D4DB /* (null) in Frameworks */,
+				F5835A9B2FCB416D00C8D4DB /* (null) in Frameworks */,
+				F5835A9E2FCB416D00C8D4DB /* FirebaseCore in Frameworks */,
+				F5835A9C2FCB416D00C8D4DB /* GoogleSignIn in Frameworks */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -71,6 +107,7 @@
 			isa = PBXGroup;
 			children = (
 				F5178B292F9E88B3001A27CE /* FebusHealthSyncIos.app */,
+				F5178C292F9E88B3001A27CE /* FebusHealthSyncUniversal.app */,
 			);
 			name = Products;
 			sourceTree = "<group>";
@@ -112,6 +149,33 @@
 			productReference = F5178B292F9E88B3001A27CE /* FebusHealthSyncIos.app */;
 			productType = "com.apple.product-type.application";
 		};
+		F5178C282F9E88B3001A27CE /* FebusHealthSyncUniversal */ = {
+			isa = PBXNativeTarget;
+			buildConfigurationList = F5178C342F9E88B5001A27CE /* Build configuration list for PBXNativeTarget "FebusHealthSyncUniversal" */;
+			buildPhases = (
+				F5178C252F9E88B3001A27CE /* Sources */,
+				F5178C262F9E88B3001A27CE /* Frameworks */,
+				F5178C272F9E88B3001A27CE /* Resources */,
+			);
+			buildRules = (
+			);
+			dependencies = (
+			);
+			fileSystemSynchronizedGroups = (
+				F5178B2B2F9E88B3001A27CE /* FebusHealthSyncIos */,
+			);
+			name = FebusHealthSyncUniversal;
+			packageProductDependencies = (
+				F5178B572F9E8D57001A27CE /* GoogleSignIn */,
+				F5178B592F9E8D57001A27CE /* GoogleSignInSwift */,
+				F5178B5C2F9E8EBF001A27CE /* FirebaseCore */,
+				F5178B5E2F9E8EC4001A27CE /* FirebaseAuth */,
+				F5178B602F9E8ED2001A27CE /* FirebaseFirestore */,
+			);
+			productName = FebusHealthSyncUniversal;
+			productReference = F5178C292F9E88B3001A27CE /* FebusHealthSyncUniversal.app */;
+			productType = "com.apple.product-type.application";
+		};
 /* End PBXNativeTarget section */
 
 /* Begin PBXProject section */
@@ -146,6 +210,7 @@
 			projectRoot = "";
 			targets = (
 				F5178B282F9E88B3001A27CE /* FebusHealthSyncIos */,
+				F5178C282F9E88B3001A27CE /* FebusHealthSyncUniversal */,
 			);
 		};
 /* End PBXProject section */
@@ -159,10 +224,24 @@
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
+		F5178C272F9E88B3001A27CE /* Resources */ = {
+			isa = PBXResourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
 /* End PBXResourcesBuildPhase section */
 
 /* Begin PBXSourcesBuildPhase section */
 		F5178B252F9E88B3001A27CE /* Sources */ = {
+			isa = PBXSourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+		F5178C252F9E88B3001A27CE /* Sources */ = {
 			isa = PBXSourcesBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
@@ -380,6 +459,100 @@
 			};
 			name = Release;
 		};
+		F5178C352F9E88B5001A27CE /* Debug */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
+				ASSETCATALOG_COMPILER_GLOBAL_ACCENT_COLOR_NAME = AccentColor;
+				CODE_SIGN_ENTITLEMENTS = FebusHealthSyncIos/FebusHealthSyncIos.entitlements;
+				CODE_SIGN_STYLE = Automatic;
+				CURRENT_PROJECT_VERSION = 1;
+				DEVELOPMENT_TEAM = 7YHH7U9F68;
+				ENABLE_APP_SANDBOX = YES;
+				ENABLE_HARDENED_RUNTIME = YES;
+				ENABLE_PREVIEWS = YES;
+				ENABLE_USER_SELECTED_FILES = readonly;
+				GENERATE_INFOPLIST_FILE = YES;
+				INFOPLIST_FILE = FebusHealthSyncIos/Info.plist;
+				"INFOPLIST_KEY_UIApplicationSceneManifest_Generation[sdk=iphoneos*]" = YES;
+				"INFOPLIST_KEY_UIApplicationSceneManifest_Generation[sdk=iphonesimulator*]" = YES;
+				"INFOPLIST_KEY_UIApplicationSupportsIndirectInputEvents[sdk=iphoneos*]" = YES;
+				"INFOPLIST_KEY_UIApplicationSupportsIndirectInputEvents[sdk=iphonesimulator*]" = YES;
+				"INFOPLIST_KEY_UILaunchScreen_Generation[sdk=iphoneos*]" = YES;
+				"INFOPLIST_KEY_UILaunchScreen_Generation[sdk=iphonesimulator*]" = YES;
+				"INFOPLIST_KEY_UIStatusBarStyle[sdk=iphoneos*]" = UIStatusBarStyleDefault;
+				"INFOPLIST_KEY_UIStatusBarStyle[sdk=iphonesimulator*]" = UIStatusBarStyleDefault;
+				INFOPLIST_KEY_UISupportedInterfaceOrientations_iPad = "UIInterfaceOrientationPortrait UIInterfaceOrientationPortraitUpsideDown UIInterfaceOrientationLandscapeLeft UIInterfaceOrientationLandscapeRight";
+				INFOPLIST_KEY_UISupportedInterfaceOrientations_iPhone = "UIInterfaceOrientationPortrait UIInterfaceOrientationLandscapeLeft UIInterfaceOrientationLandscapeRight";
+				IPHONEOS_DEPLOYMENT_TARGET = 26.4;
+				LD_RUNPATH_SEARCH_PATHS = "@executable_path/Frameworks";
+				"LD_RUNPATH_SEARCH_PATHS[sdk=macosx*]" = "@executable_path/../Frameworks";
+				MACOSX_DEPLOYMENT_TARGET = 26.3;
+				MARKETING_VERSION = 1.0;
+				PRODUCT_BUNDLE_IDENTIFIER = com.febus.FebusHealthSyncUniversal;
+				PRODUCT_NAME = "$(TARGET_NAME)";
+				REGISTER_APP_GROUPS = YES;
+				SDKROOT = auto;
+				STRING_CATALOG_GENERATE_SYMBOLS = YES;
+				SUPPORTED_PLATFORMS = "iphoneos iphonesimulator macosx xros xrsimulator";
+				SWIFT_ACTIVE_COMPILATION_CONDITIONS = "UNIVERSAL_BUILD $(inherited)";
+				SWIFT_APPROACHABLE_CONCURRENCY = YES;
+				SWIFT_DEFAULT_ACTOR_ISOLATION = MainActor;
+				SWIFT_EMIT_LOC_STRINGS = YES;
+				SWIFT_UPCOMING_FEATURE_MEMBER_IMPORT_VISIBILITY = YES;
+				SWIFT_VERSION = 5.0;
+				TARGETED_DEVICE_FAMILY = "1,2,7";
+				XROS_DEPLOYMENT_TARGET = 26.4;
+			};
+			name = Debug;
+		};
+		F517C362F9E88B5001A27CE /* Release */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
+				ASSETCATALOG_COMPILER_GLOBAL_ACCENT_COLOR_NAME = AccentColor;
+				CODE_SIGN_ENTITLEMENTS = FebusHealthSyncIos/FebusHealthSyncIos.entitlements;
+				CODE_SIGN_STYLE = Automatic;
+				CURRENT_PROJECT_VERSION = 1;
+				DEVELOPMENT_TEAM = 7YHH7U9F68;
+				ENABLE_APP_SANDBOX = YES;
+				ENABLE_HARDENED_RUNTIME = YES;
+				ENABLE_PREVIEWS = YES;
+				ENABLE_USER_SELECTED_FILES = readonly;
+				GENERATE_INFOPLIST_FILE = YES;
+				INFOPLIST_FILE = FebusHealthSyncIos/Info.plist;
+				"INFOPLIST_KEY_UIApplicationSceneManifest_Generation[sdk=iphoneos*]" = YES;
+				"INFOPLIST_KEY_UIApplicationSceneManifest_Generation[sdk=iphonesimulator*]" = YES;
+				"INFOPLIST_KEY_UIApplicationSupportsIndirectInputEvents[sdk=iphoneos*]" = YES;
+				"INFOPLIST_KEY_UIApplicationSupportsIndirectInputEvents[sdk=iphonesimulator*]" = YES;
+				"INFOPLIST_KEY_UILaunchScreen_Generation[sdk=iphoneos*]" = YES;
+				"INFOPLIST_KEY_UILaunchScreen_Generation[sdk=iphonesimulator*]" = YES;
+				"INFOPLIST_KEY_UIStatusBarStyle[sdk=iphoneos*]" = UIStatusBarStyleDefault;
+				"INFOPLIST_KEY_UIStatusBarStyle[sdk=iphonesimulator*]" = UIStatusBarStyleDefault;
+				INFOPLIST_KEY_UISupportedInterfaceOrientations_iPad = "UIInterfaceOrientationPortrait UIInterfaceOrientationPortraitUpsideDown UIInterfaceOrientationLandscapeLeft UIInterfaceOrientationLandscapeRight";
+				INFOPLIST_KEY_UISupportedInterfaceOrientations_iPhone = "UIInterfaceOrientationPortrait UIInterfaceOrientationLandscapeLeft UIInterfaceOrientationLandscapeRight";
+				IPHONEOS_DEPLOYMENT_TARGET = 26.4;
+				LD_RUNPATH_SEARCH_PATHS = "@executable_path/Frameworks";
+				"LD_RUNPATH_SEARCH_PATHS[sdk=macosx*]" = "@executable_path/../Frameworks";
+				MACOSX_DEPLOYMENT_TARGET = 26.3;
+				MARKETING_VERSION = 1.0;
+				PRODUCT_BUNDLE_IDENTIFIER = com.febus.FebusHealthSyncUniversal;
+				PRODUCT_NAME = "$(TARGET_NAME)";
+				REGISTER_APP_GROUPS = YES;
+				SDKROOT = auto;
+				STRING_CATALOG_GENERATE_SYMBOLS = YES;
+				SUPPORTED_PLATFORMS = "iphoneos iphonesimulator macosx xros xrsimulator";
+				SWIFT_ACTIVE_COMPILATION_CONDITIONS = "UNIVERSAL_BUILD $(inherited)";
+				SWIFT_APPROACHABLE_CONCURRENCY = YES;
+				SWIFT_DEFAULT_ACTOR_ISOLATION = MainActor;
+				SWIFT_EMIT_LOC_STRINGS = YES;
+				SWIFT_UPCOMING_FEATURE_MEMBER_IMPORT_VISIBILITY = YES;
+				SWIFT_VERSION = 5.0;
+				TARGETED_DEVICE_FAMILY = "1,2,7";
+				XROS_DEPLOYMENT_TARGET = 26.4;
+			};
+			name = Release;
+		};
 /* End XCBuildConfiguration section */
 
 /* Begin XCConfigurationList section */
@@ -397,6 +570,15 @@
 			buildConfigurations = (
 				F5178B352F9E88B5001A27CE /* Debug */,
 				F5178B362F9E88B5001A27CE /* Release */,
+			);
+			defaultConfigurationIsVisible = 0;
+			defaultConfigurationName = Release;
+		};
+		F5178C342F9E88B5001A27CE /* Build configuration list for PBXNativeTarget "FebusHealthSyncUniversal" */ = {
+			isa = XCConfigurationList;
+			buildConfigurations = (
+				F5178C352F9E88B5001A27CE /* Debug */,
+				F517C362F9E88B5001A27CE /* Release */,
 			);
 			defaultConfigurationIsVisible = 0;
 			defaultConfigurationName = Release;

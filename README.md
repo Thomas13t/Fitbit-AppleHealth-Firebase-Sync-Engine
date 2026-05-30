@@ -1,83 +1,121 @@
-# Febus Health Sync
+# HealthSync: Fitbit & Apple Health to Firebase Sync Engine (BYODB)
 
-A private iOS application to sync Apple Health/Fitness data to Firebase Firestore, built specifically to act as a data pipeline for AI integration (OpenClaw / Antigravity). 
+**HealthSync** is a privacy-first, universal client-side iOS application built to synchronize **Apple HealthKit** metrics and **Fitbit (via Google Fitness API)** data directly into your private **Firebase Firestore** database.
 
-## Features
-- **Google Sign-In**: Powered by Firebase Authentication.
-- **HealthKit Integration**: Requests granular permissions for workouts, heart rate, step count, and active energy.
-- **Background Sync**: Uses `HKObserverQuery` and `enableBackgroundDelivery` to keep your Firestore database up to date whenever a new workout is completed.
-- **Manual Sync**: Pulls the last 30 days of workouts.
-- **Cloud Functions Scaffold**: Ready to generate daily or weekly insight reports.
+This project is designed specifically under the **"Bring Your Own Database" (BYODB)** architectural model. You host your own free Firebase project, meaning **your sensitive health data remains 100% private, secure, and under your control**, while hosting infrastructure costs remain at exactly **$0**.
+
+This repository serves as a turnkey data pipeline for developers feeding personal metrics into custom **AI Agents** (e.g., OpenClaw, Antigravity, or personal LLM pipelines).
 
 ---
 
-## 🛠 Setup Instructions
+## 🌟 Key Features
 
-This repository contains the source files. Because Xcode project formats are proprietary, you need to scaffold the initial Xcode project yourself, then drop these files in.
+- **Google Sign-In**: Secure native user authentication backed by Firebase Auth.
+- **Dynamic Firebase Config (BYODB)**: Configure your private database inside the app by simply copy-pasting your raw `GoogleService-Info.plist` XML. 
+- **Granular HealthKit Syncing**: Reads workouts, step count, active calories, heart rate, and distance directly from Apple Health.
+- **Fitbit Sleep & Habits Sync**: Secure Google OAuth 2.0 flow that fetches sleep sessions, steps, and average heart rates from the Google Fitness REST API and writes them directly to Apple Health.
+- **Robust Background Delivery**: Leverages `BGTaskScheduler` and HealthKit background observers to automatically synchronize metrics in the background even when the app is closed.
+- **Multi-Target Architecture**: The Xcode project includes two schemes:
+  1. `FebusHealthSyncIos` (Personal hardcoded build).
+  2. `FebusHealthSyncUniversal` (White-label dynamic onboarding build).
 
-### Step 1: Create the Firebase Project
-1. Go to the [Firebase Console](https://console.firebase.google.com/).
-2. Create a new project named **Febus Health Sync**.
-3. Go to **Authentication** > **Sign-in method** and enable **Google**.
-4. Go to **Firestore Database** and create a new database.
-5. In the Firebase console, add an **iOS App** with the bundle identifier you plan to use (e.g., `com.febus.healthsync`).
-6. Download the `GoogleService-Info.plist` file. Keep this handy.
+---
 
-### Step 2: Create the Xcode Project
-1. Open Xcode and create a new **App** project.
-2. Name the product `FebusHealthSync`.
-3. Set the interface to **SwiftUI** and language to **Swift**.
-4. Choose your bundle identifier (e.g., `com.febus.healthsync`).
+## 🛠️ Step-by-Step Setup Guide
 
-### Step 3: Add the Code
-1. Drag the `FebusHealthSync` folder from this repository directly into your Xcode project navigator (replace the default files).
-2. Drag your downloaded `GoogleService-Info.plist` into the Xcode project navigator.
+This repository contains a fully configured, out-of-the-box Xcode project. You do not need to scaffold anything from scratch.
 
-### Step 4: Configure Xcode Capabilities & Info.plist
-1. Select your target in Xcode, go to **Signing & Capabilities**.
-2. Click **+ Capability** and add:
-   - **HealthKit** (Check the box for Background Delivery).
-   - **Background Modes** (Check the boxes for *Background fetch* and *Background processing*).
-3. Go to the **Info** tab of your target and add these Privacy keys:
-   - `Privacy - Health Share Usage Description`: "Febus Health Sync needs access to your workouts to back them up to your private database."
-   - `Privacy - Health Update Usage Description`: "Febus Health Sync needs access to your workouts to back them up to your private database."
-4. Add the **Google Sign-In URL Scheme**:
-   - In Xcode, click your project in the Project Navigator, select your target, and go to the **Info** tab.
-   - Scroll down to **URL Types** and click the **+** button.
-   - In the **URL Schemes** field, paste your `REVERSED_CLIENT_ID`: `com.googleusercontent.apps.215284107318-22qlq74hp88c8npccgq6ng23aeidar65`.
-   - Leave the Role as `Editor` and Identifier blank.
+### Prerequisites
+- A Mac running **macOS 15+** with **Xcode 16+** installed.
+- A free **Google Cloud / Firebase Console** account.
+- A **physical iPhone** (HealthKit data reading and background delivery require a physical device; they are restricted on the Simulator).
 
-### Step 5: Install Dependencies via Swift Package Manager
-To confirm FirebaseAuth, Firestore, and GoogleSignIn are correctly installed:
-1. In Xcode, go to **File** > **Add Package Dependencies...**
-2. Search for `https://github.com/firebase/firebase-ios-sdk`
-   - Select **Up to Next Major Version** (e.g., 10.0.0 or 11.0.0).
-   - Click **Add Package**.
-   - Check `FirebaseAuth`, `FirebaseFirestore`, and `FirebaseFirestoreSwift`.
-3. Search for `https://github.com/google/GoogleSignIn-iOS`
-   - Select **Up to Next Major Version** (e.g., 7.0.0).
-   - Click **Add Package**.
-   - Check `GoogleSignIn` and `GoogleSignInSwift`.
+---
 
-### Step 6: Deploy Firebase Backend
-1. Open your terminal and navigate to the `firebase` folder in this repo.
-2. Run `firebase login` (if not already logged in).
-3. Run `firebase init` and select the project you created.
-4. Deploy the security rules:
+### Step 1: Firebase Project Setup
+1. Go to the [Firebase Console](https://console.firebase.google.com/) and create a new project.
+2. Navigate to **Build > Authentication > Sign-in Method** and enable **Google Sign-In**.
+3. Navigate to **Build > Firestore Database** and click **Create Database**. Start in production mode.
+4. Add an **iOS App** to your Firebase project. Use a custom Bundle ID of your choice (e.g., `com.yourname.HealthSync`).
+5. Download your generated `GoogleService-Info.plist` file. Keep this handy.
+
+---
+
+### Step 2: Enable the Google Fitness API (For Fitbit data)
+Because the app fetches Fitbit/Google Fit metrics via the Google Fitness REST API, you must enable it on your Google Cloud project:
+1. Go to the [Google Cloud Console](https://console.cloud.google.com/).
+2. Select the Google Cloud project associated with your Firebase project.
+3. Navigate to **APIs & Services > Library**.
+4. Search for **Fitness API**, select it, and click **Enable**.
+5. Navigate to **APIs & Services > OAuth Consent Screen**, set user type to **External**, and add your email to the **Test Users** list (required while your project is in Testing mode).
+
+---
+
+### Step 3: Clone and Open in Xcode
+1. Clone this repository to your local Mac.
+2. Open the Xcode workspace directory: `FebusHealthSyncIos/FebusHealthSyncIos.xcodeproj`.
+3. In the top scheme dropdown menu in Xcode, select **`FebusHealthSyncUniversal`**.
+4. Select your main project target, navigate to **Signing & Capabilities**:
+   - Check **Automatically manage signing**.
+   - Select your personal Apple Developer team account.
+   - Change the **Bundle Identifier** to match the Bundle ID you registered in your Firebase Console (e.g., `com.yourname.HealthSync`).
+5. Click **+ Capability** in the top left of the panel and ensure **HealthKit** (with Background Delivery checked) and **Background Modes** (with *Background Fetch* and *Background Processing* checked) are enabled.
+
+---
+
+### Step 4: Configure the Google Sign-In Redirect URL Scheme
+Because Google Sign-in requires an iOS URL scheme to handle the login redirect callback, you must register your reversed Client ID:
+1. Open your downloaded `GoogleService-Info.plist` in a text editor and copy the `REVERSED_CLIENT_ID` string (it looks like `com.googleusercontent.apps.xxxx`).
+2. In Xcode, select the root project file in the navigator, click the **FebusHealthSyncUniversal** target, and select the **Info** tab.
+3. Scroll down to the **URL Types** section and click the **+** button.
+4. Paste your copied `REVERSED_CLIENT_ID` directly into the **URL Schemes** text field. Keep Role as `Editor` and leave other fields blank.
+
+---
+
+### Step 5: Build, Run, and Onboard!
+1. Connect your physical iPhone to your Mac.
+2. Select your physical iPhone as the destination device next to the `FebusHealthSyncUniversal` scheme in Xcode.
+3. Click the **Play (⌘ R)** button.
+4. On your iPhone, the app will boot into the sleek **Welcome and Onboarding** screen.
+5. Open your `GoogleService-Info.plist` file, copy its entire XML text, and paste it directly into the text area in the app.
+6. Tap **Configure Database**. The app will automatically parse your `API Key`, `Project ID`, `App ID`, and `Client ID`, securely configure Firebase on-the-fly, and transition to the Sign-in screen!
+7. Sign in with your Google account, authorize HealthKit permissions, and you are ready to sync!
+
+---
+
+### Step 6: Deploy Database Security Rules
+To secure your Firestore database so that only you can access your personal health data:
+1. Install the Firebase Command Line Tools in your terminal: `npm install -g firebase-tools`
+2. Run `firebase login` to authenticate.
+3. Navigate to the `firebase/` directory in this repository.
+4. Associate the directory with your Firebase project: `firebase use --add [your-project-id]`
+5. Deploy the security rules:
    ```bash
    firebase deploy --only firestore:rules
    ```
-5. Deploy the Cloud Functions scaffold:
-   ```bash
-   cd functions
-   npm install
-   npm run deploy
-   ```
 
 ---
 
-## 🚀 Running the App
-1. Build and run the app on a **physical iPhone** (HealthKit does not function correctly on the Xcode Simulator).
-2. Tap the "Sign in with Google" button.
-3. Accept the HealthKit permissions prompt.
-4. Tap "Manual Sync" to back up your last 30 days of workouts!
+## 🔒 Security Rules & Privacy Schema
+
+The deployed Firestore security rules enforce strict user-level isolation. No user can read or write any document outside of their own user record:
+
+```javascript
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+    match /users/{userId} {
+      allow read, write: if request.auth != null && request.auth.uid == userId;
+      
+      match /{subcollection=**} {
+        allow read, write: if request.auth != null && request.auth.uid == userId;
+      }
+    }
+  }
+}
+```
+
+### Deployed Firestore Data Layout:
+- `/users/{userId}`: General profile parameters.
+- `/users/{userId}/workouts/{workoutId}`: Detailed workouts synced from Apple Health.
+- `/users/{userId}/dailySummaries/{date}`: Daily step totals, active energy burn, heart rate, and sleep duration.

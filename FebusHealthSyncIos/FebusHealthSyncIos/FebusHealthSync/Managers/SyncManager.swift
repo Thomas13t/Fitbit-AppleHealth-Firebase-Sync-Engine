@@ -120,6 +120,7 @@ class SyncManager: ObservableObject {
                     totalSteps: stats.totalSteps,
                     avgHeartRate: stats.avgHeartRate,
                     restingHeartRate: stats.restingHeartRate,
+                    sleepDurationSeconds: stats.totalSleepDurationSeconds,
                     createdAt: Date(),
                     updatedAt: Date()
                 )
@@ -139,6 +140,11 @@ class SyncManager: ObservableObject {
         } catch {
             log("Sync Error: \(error.localizedDescription)")
         }
+    }
+    
+    func performBackgroundTasksSync() async {
+        log("Background Task Sync started.")
+        await performSync(daysBack: 2)
     }
     
     private func formatDate(_ date: Date) -> String {

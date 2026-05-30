@@ -6,6 +6,11 @@ import HealthKit
 class HealthKitService {
     let healthStore = HKHealthStore()
     
+    // Define the types we want to share (write)
+    private let typesToShare: Set<HKSampleType> = [
+        HKObjectType.categoryType(forIdentifier: .sleepAnalysis)!
+    ]
+    
     // Define the types we want to read
     private let typesToRead: Set<HKObjectType> = [
         HKObjectType.workoutType(),
@@ -14,14 +19,15 @@ class HealthKitService {
         HKObjectType.quantityType(forIdentifier: .stepCount)!,
         HKObjectType.quantityType(forIdentifier: .distanceWalkingRunning)!,
         HKObjectType.quantityType(forIdentifier: .activeEnergyBurned)!,
-        HKObjectType.quantityType(forIdentifier: .vo2Max)!
+        HKObjectType.quantityType(forIdentifier: .vo2Max)!,
+        HKObjectType.categoryType(forIdentifier: .sleepAnalysis)!
     ]
     
     func requestAuthorization() async throws {
         guard HKHealthStore.isHealthDataAvailable() else {
             throw NSError(domain: "HealthKitService", code: 0, userInfo: [NSLocalizedDescriptionKey: "HealthKit is not available on this device."])
         }
-        try await healthStore.requestAuthorization(toShare: [], read: typesToRead)
+        try await healthStore.requestAuthorization(toShare: typesToShare, read: typesToRead)
     }
     
     func fetchWorkouts(daysBack: Int) async throws -> [HKWorkout] {
@@ -130,7 +136,37 @@ class HealthKitService {
             stats.restingHeartRate = avg.doubleValue(for: HKUnit(from: "count/min"))
         }
         
+        // Sleep Duration
+        if let sleepDuration = try? await fetchSleepDuration(start: start, end: end) {
+            stats.totalSleepDurationSeconds = sleepDuration
+        }
+        
         return stats
+    }
+    
+    func fetchSleepDuration(start: Date, end: Date) async throws -> Double {
+        let sleepType = HKObjectType.categoryType(forIdentifier: .sleepAnalysis)!
+        let predicate = HKQuery.predicateForSamples(withStart: start, end: end, options: .strictStartDate)
+        
+        return try await withCheckedThrowingContinuation { continuation in
+            let query = HKSampleQuery(sampleType: sleepType, predicate: predicate, limit: HKObjectQueryNoLimit, sortDescriptors: nil) { _, samples, error in
+                if let error = error {
+                    continuation.resume(throwing: error)
+                    return
+                }
+                
+                let sleepSamples = samples as? [HKCategorySample] ?? []
+                let totalDuration = sleepSamples
+                    .filter { sample in
+                        let val = sample.value
+                        return val != HKCategoryValueSleepAnalysis.inBed.rawValue && val != HKCategoryValueSleepAnalysis.awake.rawValue
+                    }
+                    .reduce(0.0) { $0 + $1.endDate.timeIntervalSince($1.startDate) }
+                
+                continuation.resume(returning: totalDuration)
+            }
+            healthStore.execute(query)
+        }
     }
 }
 
@@ -140,5 +176,6 @@ struct DailyQuantityStats {
     var walkingDistanceMeters: Double = 0
     var avgHeartRate: Double? = nil
     var restingHeartRate: Double? = nil
+    var totalSleepDurationSeconds: Double? = nil
 }
 

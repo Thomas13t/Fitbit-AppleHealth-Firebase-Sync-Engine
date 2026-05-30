@@ -140,14 +140,7 @@ struct WorkoutListView: View {
             }
             .navigationTitle("Recent Workouts")
             .navigationBarTitleDisplayMode(.inline)
-            .toolbar {
-                ToolbarItem(placement: .navigationBarTrailing) {
-                    NavigationLink(destination: HomeDashboardView()) {
-                        Image(systemName: "square.grid.2x2")
-                            .foregroundColor(.cyan)
-                    }
-                }
-            }
+
             .task {
                 await fetchWorkouts()
             }
@@ -191,7 +184,7 @@ struct WorkoutCardView: View {
                     .foregroundColor(activityColor)
             }
             
-            // Middle: Type and Date
+            // Middle: Type, Date, and Distance
             VStack(alignment: .leading, spacing: 4) {
                 Text(activityName)
                     .font(.headline)
@@ -201,6 +194,13 @@ struct WorkoutCardView: View {
                 Text(workout.startDate.formatted(date: .abbreviated, time: .shortened))
                     .font(.subheadline)
                     .foregroundColor(.gray)
+                
+                if let distance = workout.totalDistanceMeters, distance > 0 {
+                    Text(String(format: "%.2f km", distance / 1000.0))
+                        .font(.caption)
+                        .fontWeight(.bold)
+                        .foregroundColor(.green)
+                }
             }
             
             Spacer()

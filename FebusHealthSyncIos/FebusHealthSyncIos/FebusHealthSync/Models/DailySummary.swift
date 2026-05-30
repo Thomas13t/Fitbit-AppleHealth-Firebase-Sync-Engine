@@ -14,6 +14,7 @@ struct DailySummary: Identifiable, Codable {
     let totalSteps: Int
     let avgHeartRate: Double?
     let restingHeartRate: Double?
+    let sleepDurationSeconds: Double?
     
     let createdAt: Date
     let updatedAt: Date
@@ -36,6 +37,7 @@ struct DailySummary: Identifiable, Codable {
         
         if let avgHr = avgHeartRate { dict["avgHeartRate"] = avgHr }
         if let restHr = restingHeartRate { dict["restingHeartRate"] = restHr }
+        if let sleepDur = sleepDurationSeconds { dict["sleepDurationSeconds"] = sleepDur }
         
         return dict
     }

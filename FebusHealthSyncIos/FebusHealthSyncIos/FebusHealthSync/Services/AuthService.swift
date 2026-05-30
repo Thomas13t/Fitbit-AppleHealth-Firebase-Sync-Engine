@@ -9,6 +9,15 @@ class AuthService: ObservableObject {
     @Published var isAuthenticating: Bool = false
     
     init() {
+        guard FirebaseApp.app() != nil else {
+            print("[AuthService] Firebase not configured yet. Deferring auth state listener.")
+            return
+        }
+        setupStateListener()
+    }
+    
+    func setupStateListener() {
+        guard FirebaseApp.app() != nil else { return }
         self.currentUser = Auth.auth().currentUser
         
         _ = Auth.auth().addStateDidChangeListener { [weak self] _, user in
