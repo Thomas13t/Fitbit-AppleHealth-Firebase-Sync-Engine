@@ -130,32 +130,38 @@ class FitbitService: NSObject, ObservableObject {
             return (false, "Not linked.")
         }
         
+        // Define a "sleep night" range: 18:00 (6 PM) of the previous day to 12:00 (12 PM) of target date
         let calendar = Calendar.current
         let startOfDay = calendar.startOfDay(for: date)
-        let endOfDay = calendar.date(byAdding: .day, value: 1, to: startOfDay)!
         
-        // Convert to ISO 8601 strings
-        let formatter = ISO8601DateFormatter()
-        let startTimeStr = formatter.string(from: startOfDay)
-        let endTimeStr = formatter.string(from: endOfDay)
-        
-        // Query Google Fitness Sessions API
-        var components = URLComponents(string: "https://www.googleapis.com/fitness/v1/users/me/sessions")!
-        components.queryItems = [
-            URLQueryItem(name: "startTime", value: startTimeStr),
-            URLQueryItem(name: "endTime", value: endTimeStr),
-            URLQueryItem(name: "activityType", value: "72") // 72 = Sleep
-        ]
-        
-        guard let url = components.url else {
-            return (false, "Invalid endpoint URL.")
+        guard let sleepStart = calendar.date(byAdding: .hour, value: -6, to: startOfDay),
+              let sleepEnd = calendar.date(byAdding: .hour, value: 12, to: startOfDay) else {
+            return (false, "Invalid date calculations.")
         }
         
-        var request = URLRequest(url: url)
-        request.httpMethod = "GET"
+        let startTimeMillis = Int64(sleepStart.timeIntervalSince1970 * 1000)
+        let endTimeMillis = Int64(sleepEnd.timeIntervalSince1970 * 1000)
+        
+        // 1. Try Granular Sleep Segment Aggregation first
+        guard let aggregateURL = URL(string: "https://www.googleapis.com/fitness/v1/users/me/dataset:aggregate") else {
+            return (false, "Invalid aggregate URL.")
+        }
+        
+        var request = URLRequest(url: aggregateURL)
+        request.httpMethod = "POST"
         request.setValue("Bearer \(token)", forHTTPHeaderField: "Authorization")
+        request.setValue("application/json", forHTTPHeaderField: "Content-Type")
+        
+        let body: [String: Any] = [
+            "aggregateBy": [
+                ["dataTypeName": "com.google.sleep.segment"]
+            ],
+            "startTimeMillis": startTimeMillis,
+            "endTimeMillis": endTimeMillis
+        ]
         
         do {
+            request.httpBody = try JSONSerialization.data(withJSONObject: body)
             let (data, response) = try await URLSession.shared.data(for: request)
             
             if let httpResponse = response as? HTTPURLResponse, httpResponse.statusCode == 401 {
@@ -167,9 +173,16 @@ class FitbitService: NSObject, ObservableObject {
                 }
             }
             
-            return try await parseAndSaveSleepData(data)
+            let result = try await parseAndSaveSleepAggregateData(data)
+            if result.success && result.message != "No new sleep data to import." && !result.message.contains("No sleep") {
+                return result
+            }
+            
+            // If aggregate imported nothing or was empty, fall back to high-level sessions query
+            return try await fallbackSyncSessions(startTimeMillis: startTimeMillis, endTimeMillis: endTimeMillis, token: token)
         } catch {
-            return (false, "Network error: \(error.localizedDescription)")
+            // In case of any error, fall back to high-level sessions
+            return (try? await fallbackSyncSessions(startTimeMillis: startTimeMillis, endTimeMillis: endTimeMillis, token: token)) ?? (false, "Error: \(error.localizedDescription)")
         }
     }
     
@@ -213,6 +226,123 @@ class FitbitService: NSObject, ObservableObject {
         return false
     }
     
+    private func sleepSampleExists(start: Date, end: Date, value: Int) async -> Bool {
+        let sleepType = HKObjectType.categoryType(forIdentifier: .sleepAnalysis)!
+        let predicate = HKQuery.predicateForSamples(withStart: start, end: end, options: .strictStartDate)
+        
+        return await withCheckedContinuation { continuation in
+            let query = HKSampleQuery(sampleType: sleepType, predicate: predicate, limit: 1, sortDescriptors: nil) { _, samples, _ in
+                let existing = samples as? [HKCategorySample] ?? []
+                let match = existing.contains { $0.startDate == start && $0.endDate == end && $0.value == value }
+                continuation.resume(returning: match)
+            }
+            healthStore.execute(query)
+        }
+    }
+    
+    private func parseAndSaveSleepAggregateData(_ data: Data) async throws -> (success: Bool, message: String) {
+        guard let json = try JSONSerialization.jsonObject(with: data) as? [String: Any],
+              let buckets = json["bucket"] as? [[String: Any]] else {
+            return (false, "Could not parse Google Fit sleep aggregate.")
+        }
+        
+        let sleepType = HKObjectType.categoryType(forIdentifier: .sleepAnalysis)!
+        var samplesToSave: [HKCategorySample] = []
+        
+        for bucket in buckets {
+            guard let datasets = bucket["dataset"] as? [[String: Any]] else { continue }
+            
+            for dataset in datasets {
+                guard let points = dataset["point"] as? [[String: Any]] else { continue }
+                
+                for point in points {
+                    guard let startTimeNanosStr = point["startTimeNanos"] as? String,
+                          let endTimeNanosStr = point["endTimeNanos"] as? String,
+                          let startTimeNanos = Double(startTimeNanosStr),
+                          let endTimeNanos = Double(endTimeNanosStr),
+                          let values = point["value"] as? [[String: Any]], !values.isEmpty,
+                          let fitbitSleepValue = values[0]["intVal"] as? Int else {
+                        continue
+                    }
+                    
+                    let startDate = Date(timeIntervalSince1970: startTimeNanos / 1_000_000_000.0)
+                    let endDate = Date(timeIntervalSince1970: endTimeNanos / 1_000_000_000.0)
+                    
+                    // Map Google Fit/Fitbit sleep values to HealthKit sleep analysis values
+                    let hkSleepValue: Int
+                    switch fitbitSleepValue {
+                    case 0: // Unspecified
+                        hkSleepValue = HKCategoryValueSleepAnalysis.asleepUnspecified.rawValue
+                    case 1: // Awake
+                        hkSleepValue = HKCategoryValueSleepAnalysis.awake.rawValue
+                    case 2: // Sleeping (generic)
+                        hkSleepValue = HKCategoryValueSleepAnalysis.asleepUnspecified.rawValue
+                    case 3: // Out of bed (user is awake)
+                        hkSleepValue = HKCategoryValueSleepAnalysis.awake.rawValue
+                    case 4: // Light sleep
+                        hkSleepValue = HKCategoryValueSleepAnalysis.asleepCore.rawValue
+                    case 5: // Deep sleep
+                        hkSleepValue = HKCategoryValueSleepAnalysis.asleepDeep.rawValue
+                    case 6: // REM sleep
+                        hkSleepValue = HKCategoryValueSleepAnalysis.asleepREM.rawValue
+                    default:
+                        hkSleepValue = HKCategoryValueSleepAnalysis.asleepUnspecified.rawValue
+                    }
+                    
+                    // De-duplication check
+                    let exists = await sleepSampleExists(start: startDate, end: endDate, value: hkSleepValue)
+                    if !exists {
+                        let sample = HKCategorySample(
+                            type: sleepType,
+                            value: hkSleepValue,
+                            start: startDate,
+                            end: endDate,
+                            metadata: [HKMetadataKeyWasUserEntered: false]
+                        )
+                        samplesToSave.append(sample)
+                    }
+                }
+            }
+        }
+        
+        if !samplesToSave.isEmpty {
+            try await healthStore.save(samplesToSave)
+            return (true, "Imported \(samplesToSave.count) new granular sleep stages to Apple Health!")
+        }
+        
+        return (true, "No new sleep data to import.")
+    }
+    
+    private func fallbackSyncSessions(startTimeMillis: Int64, endTimeMillis: Int64, token: String) async throws -> (success: Bool, message: String) {
+        let formatter = ISO8601DateFormatter()
+        let startDate = Date(timeIntervalSince1970: Double(startTimeMillis) / 1000.0)
+        let endDate = Date(timeIntervalSince1970: Double(endTimeMillis) / 1000.0)
+        let startTimeStr = formatter.string(from: startDate)
+        let endTimeStr = formatter.string(from: endDate)
+        
+        var components = URLComponents(string: "https://www.googleapis.com/fitness/v1/users/me/sessions")!
+        components.queryItems = [
+            URLQueryItem(name: "startTime", value: startTimeStr),
+            URLQueryItem(name: "endTime", value: endTimeStr),
+            URLQueryItem(name: "activityType", value: "72") // 72 = Sleep
+        ]
+        
+        guard let url = components.url else {
+            return (false, "Invalid fallback sessions URL.")
+        }
+        
+        var request = URLRequest(url: url)
+        request.httpMethod = "GET"
+        request.setValue("Bearer \(token)", forHTTPHeaderField: "Authorization")
+        
+        let (data, response) = try await URLSession.shared.data(for: request)
+        if let httpResponse = response as? HTTPURLResponse, httpResponse.statusCode == 401 {
+            return (false, "Unauthorized fallback session.")
+        }
+        
+        return try await parseAndSaveSleepData(data)
+    }
+
     private func parseAndSaveSleepData(_ data: Data) async throws -> (success: Bool, message: String) {
         guard let json = try JSONSerialization.jsonObject(with: data) as? [String: Any],
               let sessions = json["session"] as? [[String: Any]] else {
@@ -237,14 +367,17 @@ class FitbitService: NSObject, ObservableObject {
             let startDate = Date(timeIntervalSince1970: startTimeMillis / 1000.0)
             let endDate = Date(timeIntervalSince1970: endTimeMillis / 1000.0)
             
-            let sample = HKCategorySample(
-                type: sleepType,
-                value: HKCategoryValueSleepAnalysis.asleepUnspecified.rawValue,
-                start: startDate,
-                end: endDate,
-                metadata: [HKMetadataKeyWasUserEntered: true]
-            )
-            samples.append(sample)
+            let exists = await sleepSampleExists(start: startDate, end: endDate, value: HKCategoryValueSleepAnalysis.asleepUnspecified.rawValue)
+            if !exists {
+                let sample = HKCategorySample(
+                    type: sleepType,
+                    value: HKCategoryValueSleepAnalysis.asleepUnspecified.rawValue,
+                    start: startDate,
+                    end: endDate,
+                    metadata: [HKMetadataKeyWasUserEntered: false]
+                )
+                samples.append(sample)
+            }
         }
         
         if !samples.isEmpty {
