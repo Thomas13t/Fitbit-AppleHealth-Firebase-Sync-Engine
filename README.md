@@ -1,6 +1,6 @@
 # HealthSync: Fitbit & Apple Health to Firebase Sync Engine (BYODB)
 
-**HealthSync** is a privacy-first, universal client-side iOS application built to synchronize **Apple HealthKit** metrics and **Fitbit (via Google Fitness API)** data directly into your private **Firebase Firestore** database.
+**HealthSync** is a privacy-first, universal client-side iOS application built to synchronize **Apple HealthKit** metrics and **Fitbit / Google Health** data directly into your private **Firebase Firestore** database.
 
 This project is designed specifically under the **"Bring Your Own Database" (BYODB)** architectural model. You host your own free Firebase project, meaning **your sensitive health data remains 100% private, secure, and under your control**, while hosting infrastructure costs remain at exactly **$0**.
 
@@ -10,11 +10,13 @@ This repository serves as a turnkey data pipeline for developers feeding persona
 
 ## 🌟 Key Features
 
-- **Google Sign-In**: Secure native user authentication backed by Firebase Auth.
+- **Authentication**: The personal build uses Google Sign-In. The universal BYODB build uses Firebase anonymous auth so a single App Store binary can work with a user-provided Firebase project.
 - **Dynamic Firebase Config (BYODB)**: Configure your private database inside the app by simply copy-pasting your raw `GoogleService-Info.plist` XML. 
-- **Granular HealthKit Syncing**: Reads workouts, step count, active calories, heart rate, and distance directly from Apple Health.
-- **Fitbit Sleep & Habits Sync**: Secure Google OAuth 2.0 flow that fetches sleep sessions, steps, and average heart rates from the Google Fitness REST API and writes them directly to Apple Health.
-- **Robust Background Delivery**: Leverages `BGTaskScheduler` and HealthKit background observers to automatically synchronize metrics in the background even when the app is closed.
+- **Granular HealthKit Syncing**: Reads workouts, step count, active calories, heart rate, respiratory rate, HRV, SpO2, temperature, exercise minutes, floors, sleep, and distance directly from Apple Health.
+- **Google Health / Fitbit Import**: Secure Google OAuth 2.0 flow that fetches sleep sessions, steps, heart rate, resting heart rate, respiratory rate, HRV, SpO2, sleep temperature, active minutes, Active Zone Minutes, calories, distance, floors, and workouts from the Google Health API and writes supported values directly to Apple Health.
+  - *Note on Sleep Vitals*: To ensure imported metrics (HRV, SpO2, Respiratory Rate, Wrist Temperature) correctly appear under the "Sleep" section in Apple Health, they are assigned a timestamp of 03:00 AM. 
+  - *Note on Temperature*: The app utilizes `.appleSleepingWristTemperature` (requires iOS 16+) for more accurate sleep temperature tracking, falling back to general `.bodyTemperature` on older OS versions.
+- **Background Delivery**: Leverages `BGTaskScheduler` and HealthKit workout observers to synchronize Apple Health summaries in the background. Google Health imports currently run from the in-app sync action.
 - **Multi-Target Architecture**: The Xcode project includes two schemes:
   1. `FebusHealthSyncIos` (Personal hardcoded build).
   2. `FebusHealthSyncUniversal` (White-label dynamic onboarding build).
@@ -34,20 +36,26 @@ This repository contains a fully configured, out-of-the-box Xcode project. You d
 
 ### Step 1: Firebase Project Setup
 1. Go to the [Firebase Console](https://console.firebase.google.com/) and create a new project.
-2. Navigate to **Build > Authentication > Sign-in Method** and enable **Google Sign-In**.
+2. Navigate to **Build > Authentication > Sign-in Method**.
+   - For the **Universal BYODB** build, enable **Anonymous** authentication.
+   - For a custom/personal Google Sign-In build, enable **Google** authentication.
 3. Navigate to **Build > Firestore Database** and click **Create Database**. Start in production mode.
 4. Add an **iOS App** to your Firebase project. Use a custom Bundle ID of your choice (e.g., `com.yourname.HealthSync`).
 5. Download your generated `GoogleService-Info.plist` file. Keep this handy.
 
 ---
 
-### Step 2: Enable the Google Fitness API (For Fitbit data)
-Because the app fetches Fitbit/Google Fit metrics via the Google Fitness REST API, you must enable it on your Google Cloud project:
+### Step 2: Enable the Google Health API (For Fitbit / Google Health data)
+Because new Fitbit integrations are moving through Google Health API, you must enable it on your Google Cloud project:
 1. Go to the [Google Cloud Console](https://console.cloud.google.com/).
 2. Select the Google Cloud project associated with your Firebase project.
 3. Navigate to **APIs & Services > Library**.
-4. Search for **Fitness API**, select it, and click **Enable**.
+4. Search for **Google Health API**, select it, and click **Enable**.
 5. Navigate to **APIs & Services > OAuth Consent Screen**, set user type to **External**, and add your email to the **Test Users** list (required while your project is in Testing mode).
+6. Add the required OAuth scopes:
+   - `https://www.googleapis.com/auth/googlehealth.activity_and_fitness.readonly`
+   - `https://www.googleapis.com/auth/googlehealth.health_metrics_and_measurements.readonly`
+   - `https://www.googleapis.com/auth/googlehealth.sleep.readonly`
 
 ---
 
@@ -63,12 +71,18 @@ Because the app fetches Fitbit/Google Fit metrics via the Google Fitness REST AP
 
 ---
 
-### Step 4: Configure the Google Sign-In Redirect URL Scheme
-Because Google Sign-in requires an iOS URL scheme to handle the login redirect callback, you must register your reversed Client ID:
-1. Open your downloaded `GoogleService-Info.plist` in a text editor and copy the `REVERSED_CLIENT_ID` string (it looks like `com.googleusercontent.apps.xxxx`).
-2. In Xcode, select the root project file in the navigator, click the **FebusHealthSyncUniversal** target, and select the **Info** tab.
-3. Scroll down to the **URL Types** section and click the **+** button.
-4. Paste your copied `REVERSED_CLIENT_ID` directly into the **URL Schemes** text field. Keep Role as `Editor` and leave other fields blank.
+### Step 4: Configure the App-Owned Google Health OAuth Client
+The universal App Store build cannot dynamically register every user's Google reversed client ID after installation. Instead, it uses a fixed app-owned OAuth client for the Fitbit/Google Fitness import flow, while the user's Firebase project remains their private data destination.
+
+Before publishing your own universal build:
+1. Create an iOS OAuth client in Google Cloud for the universal app bundle identifier.
+2. Enable the Google Health API for that Google Cloud project.
+3. In `FebusHealthSyncIos/FebusHealthSyncIos/Info.plist`, set:
+   - `FebusGoogleOAuthClientID`
+   - `FebusGoogleOAuthCallbackScheme`
+4. Confirm the callback scheme is also listed under `CFBundleURLTypes`.
+
+For the personal build, the bundled `GoogleService-Info.plist` and URL scheme continue to provide this configuration.
 
 ---
 
@@ -78,8 +92,8 @@ Because Google Sign-in requires an iOS URL scheme to handle the login redirect c
 3. Click the **Play (⌘ R)** button.
 4. On your iPhone, the app will boot into the sleek **Welcome and Onboarding** screen.
 5. Open your `GoogleService-Info.plist` file, copy its entire XML text, and paste it directly into the text area in the app.
-6. Tap **Configure Database**. The app will automatically parse your `API Key`, `Project ID`, `App ID`, and `Client ID`, securely configure Firebase on-the-fly, and transition to the Sign-in screen!
-7. Sign in with your Google account, authorize HealthKit permissions, and you are ready to sync!
+6. Tap **Configure Database**. The app will automatically parse your `API Key`, `Project ID`, and `App ID`, securely configure Firebase on-the-fly, and transition to the sign-in screen.
+7. Tap **Continue Privately**, authorize HealthKit permissions, optionally link Google Health / Fitbit, and you are ready to sync.
 
 ---
 
@@ -118,4 +132,4 @@ service cloud.firestore {
 ### Deployed Firestore Data Layout:
 - `/users/{userId}`: General profile parameters.
 - `/users/{userId}/workouts/{workoutId}`: Detailed workouts synced from Apple Health.
-- `/users/{userId}/dailySummaries/{date}`: Daily step totals, active energy burn, heart rate, and sleep duration.
+- `/users/{userId}/dailySummaries/{date}`: Daily step totals, active energy burn, distance, floors, exercise minutes, heart rate, resting heart rate, respiratory rate, HRV, SpO2, temperature, and sleep duration.

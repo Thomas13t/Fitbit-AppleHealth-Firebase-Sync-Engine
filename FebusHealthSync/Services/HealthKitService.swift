@@ -1,25 +1,66 @@
 import Foundation
 import HealthKit
 
+
+// Clean up cached warnings
 class HealthKitService {
     let healthStore = HKHealthStore()
     
+    // Define the types we want to share (write)
+    private let typesToShare: Set<HKSampleType> = {
+        var types: Set<HKSampleType> = [
+            HKObjectType.categoryType(forIdentifier: .sleepAnalysis)!,
+            HKObjectType.quantityType(forIdentifier: .stepCount)!,
+            HKObjectType.quantityType(forIdentifier: .heartRate)!,
+            HKObjectType.quantityType(forIdentifier: .restingHeartRate)!,
+            HKObjectType.quantityType(forIdentifier: .respiratoryRate)!,
+            HKObjectType.quantityType(forIdentifier: .heartRateVariabilitySDNN)!,
+            HKObjectType.quantityType(forIdentifier: .oxygenSaturation)!,
+            HKObjectType.quantityType(forIdentifier: .bodyTemperature)!,
+            HKObjectType.quantityType(forIdentifier: .activeEnergyBurned)!,
+            HKObjectType.quantityType(forIdentifier: .distanceWalkingRunning)!,
+            HKObjectType.quantityType(forIdentifier: .flightsClimbed)!,
+            HKObjectType.workoutType()
+        ]
+        if #available(iOS 16.0, *) {
+            if let type = HKObjectType.quantityType(forIdentifier: .appleSleepingWristTemperature) {
+                types.insert(type)
+            }
+        }
+        return types
+    }()
+    
     // Define the types we want to read
-    private let typesToRead: Set<HKObjectType> = [
-        HKObjectType.workoutType(),
-        HKObjectType.quantityType(forIdentifier: .heartRate)!,
-        HKObjectType.quantityType(forIdentifier: .restingHeartRate)!,
-        HKObjectType.quantityType(forIdentifier: .stepCount)!,
-        HKObjectType.quantityType(forIdentifier: .distanceWalkingRunning)!,
-        HKObjectType.quantityType(forIdentifier: .activeEnergyBurned)!,
-        HKObjectType.quantityType(forIdentifier: .vo2Max)!
-    ]
+    private let typesToRead: Set<HKObjectType> = {
+        var types: Set<HKObjectType> = [
+            HKObjectType.workoutType(),
+            HKObjectType.quantityType(forIdentifier: .heartRate)!,
+            HKObjectType.quantityType(forIdentifier: .restingHeartRate)!,
+            HKObjectType.quantityType(forIdentifier: .respiratoryRate)!,
+            HKObjectType.quantityType(forIdentifier: .heartRateVariabilitySDNN)!,
+            HKObjectType.quantityType(forIdentifier: .oxygenSaturation)!,
+            HKObjectType.quantityType(forIdentifier: .bodyTemperature)!,
+            HKObjectType.quantityType(forIdentifier: .appleExerciseTime)!,
+            HKObjectType.quantityType(forIdentifier: .flightsClimbed)!,
+            HKObjectType.quantityType(forIdentifier: .stepCount)!,
+            HKObjectType.quantityType(forIdentifier: .distanceWalkingRunning)!,
+            HKObjectType.quantityType(forIdentifier: .activeEnergyBurned)!,
+            HKObjectType.quantityType(forIdentifier: .vo2Max)!,
+            HKObjectType.categoryType(forIdentifier: .sleepAnalysis)!
+        ]
+        if #available(iOS 16.0, *) {
+            if let type = HKObjectType.quantityType(forIdentifier: .appleSleepingWristTemperature) {
+                types.insert(type)
+            }
+        }
+        return types
+    }()
     
     func requestAuthorization() async throws {
         guard HKHealthStore.isHealthDataAvailable() else {
             throw NSError(domain: "HealthKitService", code: 0, userInfo: [NSLocalizedDescriptionKey: "HealthKit is not available on this device."])
         }
-        try await healthStore.requestAuthorization(toShare: [], read: typesToRead)
+        try await healthStore.requestAuthorization(toShare: typesToShare, read: typesToRead)
     }
     
     func fetchWorkouts(daysBack: Int) async throws -> [HKWorkout] {
@@ -96,39 +137,116 @@ class HealthKitService {
         // Steps
         if let stepType = HKObjectType.quantityType(forIdentifier: .stepCount),
            let result = try? await fetchDailyQuantity(type: stepType, start: start, end: end, options: .cumulativeSum),
-           let sum = result?.sumQuantity() {
+           let sum = result.sumQuantity() {
             stats.totalSteps = Int(sum.doubleValue(for: HKUnit.count()))
         }
         
         // Active Energy
         if let energyType = HKObjectType.quantityType(forIdentifier: .activeEnergyBurned),
            let result = try? await fetchDailyQuantity(type: energyType, start: start, end: end, options: .cumulativeSum),
-           let sum = result?.sumQuantity() {
+           let sum = result.sumQuantity() {
             stats.totalActiveEnergyKcal = sum.doubleValue(for: HKUnit.kilocalorie())
         }
         
         // Walking Distance
         if let distType = HKObjectType.quantityType(forIdentifier: .distanceWalkingRunning),
            let result = try? await fetchDailyQuantity(type: distType, start: start, end: end, options: .cumulativeSum),
-           let sum = result?.sumQuantity() {
+           let sum = result.sumQuantity() {
             stats.walkingDistanceMeters = sum.doubleValue(for: HKUnit.meter())
         }
         
         // Avg HR
         if let hrType = HKObjectType.quantityType(forIdentifier: .heartRate),
            let result = try? await fetchDailyQuantity(type: hrType, start: start, end: end, options: .discreteAverage),
-           let avg = result?.averageQuantity() {
+           let avg = result.averageQuantity() {
             stats.avgHeartRate = avg.doubleValue(for: HKUnit(from: "count/min"))
         }
         
         // Resting HR
         if let restHrType = HKObjectType.quantityType(forIdentifier: .restingHeartRate),
            let result = try? await fetchDailyQuantity(type: restHrType, start: start, end: end, options: .discreteAverage),
-           let avg = result?.averageQuantity() {
+           let avg = result.averageQuantity() {
             stats.restingHeartRate = avg.doubleValue(for: HKUnit(from: "count/min"))
         }
         
+        // Respiratory Rate
+        if let respiratoryType = HKObjectType.quantityType(forIdentifier: .respiratoryRate),
+           let result = try? await fetchDailyQuantity(type: respiratoryType, start: start, end: end, options: .discreteAverage),
+           let avg = result.averageQuantity() {
+            stats.respiratoryRate = avg.doubleValue(for: HKUnit(from: "count/min"))
+        }
+        
+        // HRV
+        if let hrvType = HKObjectType.quantityType(forIdentifier: .heartRateVariabilitySDNN),
+           let result = try? await fetchDailyQuantity(type: hrvType, start: start, end: end, options: .discreteAverage),
+           let avg = result.averageQuantity() {
+            stats.heartRateVariabilityMs = avg.doubleValue(for: .secondUnit(with: .milli))
+        }
+        
+        // Oxygen Saturation
+        if let oxygenType = HKObjectType.quantityType(forIdentifier: .oxygenSaturation),
+           let result = try? await fetchDailyQuantity(type: oxygenType, start: start, end: end, options: .discreteAverage),
+           let avg = result.averageQuantity() {
+            stats.oxygenSaturationPercent = avg.doubleValue(for: .percent()) * 100.0
+        }
+        
+        // Sleep/Skin Temperature imported as body temperature or sleeping wrist temperature
+        if #available(iOS 16.0, *),
+           let sleepTempType = HKObjectType.quantityType(forIdentifier: .appleSleepingWristTemperature),
+           let result = try? await fetchDailyQuantity(type: sleepTempType, start: start, end: end, options: .discreteAverage),
+           let avg = result.averageQuantity() {
+            stats.bodyTemperatureCelsius = avg.doubleValue(for: .degreeCelsius())
+        } else if let temperatureType = HKObjectType.quantityType(forIdentifier: .bodyTemperature),
+           let result = try? await fetchDailyQuantity(type: temperatureType, start: start, end: end, options: .discreteAverage),
+           let avg = result.averageQuantity() {
+            stats.bodyTemperatureCelsius = avg.doubleValue(for: .degreeCelsius())
+        }
+        
+        // Exercise minutes
+        if let exerciseType = HKObjectType.quantityType(forIdentifier: .appleExerciseTime),
+           let result = try? await fetchDailyQuantity(type: exerciseType, start: start, end: end, options: .cumulativeSum),
+           let sum = result.sumQuantity() {
+            stats.exerciseMinutes = sum.doubleValue(for: .minute())
+        }
+        
+        // Flights climbed / floors
+        if let floorsType = HKObjectType.quantityType(forIdentifier: .flightsClimbed),
+           let result = try? await fetchDailyQuantity(type: floorsType, start: start, end: end, options: .cumulativeSum),
+           let sum = result.sumQuantity() {
+            stats.flightsClimbed = sum.doubleValue(for: .count())
+        }
+        
+        // Sleep Duration
+        if let sleepDuration = try? await fetchSleepDuration(start: start, end: end) {
+            stats.totalSleepDurationSeconds = sleepDuration
+        }
+        
         return stats
+    }
+    
+    func fetchSleepDuration(start: Date, end: Date) async throws -> Double {
+        let sleepType = HKObjectType.categoryType(forIdentifier: .sleepAnalysis)!
+        let predicate = HKQuery.predicateForSamples(withStart: start, end: end, options: .strictStartDate)
+        
+        return try await withCheckedThrowingContinuation { continuation in
+            let query = HKSampleQuery(sampleType: sleepType, predicate: predicate, limit: HKObjectQueryNoLimit, sortDescriptors: nil) { _, samples, error in
+                if let error = error {
+                    continuation.resume(throwing: error)
+                    return
+                }
+                
+                let sleepSamples = samples as? [HKCategorySample] ?? []
+                let totalDuration = sleepSamples
+                    .filter { sample in
+                        let val = sample.value
+                        return val != HKCategoryValueSleepAnalysis.inBed.rawValue && val != HKCategoryValueSleepAnalysis.awake.rawValue
+                    }
+                    .reduce(0.0) { $0 + $1.endDate.timeIntervalSince($1.startDate) }
+                
+                continuation.resume(returning: totalDuration)
+            }
+            healthStore.execute(query)
+        }
     }
 }
 
@@ -138,5 +256,11 @@ struct DailyQuantityStats {
     var walkingDistanceMeters: Double = 0
     var avgHeartRate: Double? = nil
     var restingHeartRate: Double? = nil
+    var respiratoryRate: Double? = nil
+    var heartRateVariabilityMs: Double? = nil
+    var oxygenSaturationPercent: Double? = nil
+    var bodyTemperatureCelsius: Double? = nil
+    var exerciseMinutes: Double? = nil
+    var flightsClimbed: Double? = nil
+    var totalSleepDurationSeconds: Double? = nil
 }
-
