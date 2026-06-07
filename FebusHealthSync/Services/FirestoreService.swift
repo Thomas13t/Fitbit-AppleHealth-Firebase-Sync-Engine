@@ -3,7 +3,9 @@ import FirebaseFirestore
 import FirebaseAuth
 
 class FirestoreService {
-    private let db = Firestore.firestore()
+    private var db: Firestore {
+        Firestore.firestore()
+    }
     
     // MARK: - User Profile
     

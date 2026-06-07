@@ -26,6 +26,29 @@ struct LoginView: View {
             if authService.isAuthenticating {
                 ProgressView("Signing in...")
             } else {
+                #if UNIVERSAL_BUILD
+                Button(action: {
+                    Task {
+                        do {
+                            try await authService.signIn()
+                        } catch {
+                            print("Sign-in error: \(error.localizedDescription)")
+                        }
+                    }
+                }) {
+                    HStack {
+                        Image(systemName: "lock.shield.fill")
+                        Text("Continue Privately")
+                            .fontWeight(.semibold)
+                    }
+                    .frame(maxWidth: .infinity)
+                    .frame(height: 50)
+                    .background(Color.cyan)
+                    .foregroundColor(.black)
+                    .cornerRadius(12)
+                }
+                .padding(.horizontal, 40)
+                #else
                 // Using standard GoogleSignIn Button
                 GoogleSignInButton(scheme: .dark, style: .wide, state: .normal) {
                     Task {
@@ -45,6 +68,7 @@ struct LoginView: View {
                 }
                 .frame(height: 50)
                 .padding(.horizontal, 40)
+                #endif
             }
             
             Spacer()

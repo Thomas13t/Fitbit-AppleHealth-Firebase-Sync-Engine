@@ -14,6 +14,12 @@ struct DailySummary: Identifiable, Codable {
     let totalSteps: Int
     let avgHeartRate: Double?
     let restingHeartRate: Double?
+    let respiratoryRate: Double?
+    let heartRateVariabilityMs: Double?
+    let oxygenSaturationPercent: Double?
+    let bodyTemperatureCelsius: Double?
+    let exerciseMinutes: Double?
+    let flightsClimbed: Double?
     let sleepDurationSeconds: Double?
     
     let createdAt: Date
@@ -37,6 +43,12 @@ struct DailySummary: Identifiable, Codable {
         
         if let avgHr = avgHeartRate { dict["avgHeartRate"] = avgHr }
         if let restHr = restingHeartRate { dict["restingHeartRate"] = restHr }
+        if let respRate = respiratoryRate { dict["respiratoryRate"] = respRate }
+        if let hrv = heartRateVariabilityMs { dict["heartRateVariabilityMs"] = hrv }
+        if let oxygen = oxygenSaturationPercent { dict["oxygenSaturationPercent"] = oxygen }
+        if let temp = bodyTemperatureCelsius { dict["bodyTemperatureCelsius"] = temp }
+        if let minutes = exerciseMinutes { dict["exerciseMinutes"] = minutes }
+        if let floors = flightsClimbed { dict["flightsClimbed"] = floors }
         if let sleepDur = sleepDurationSeconds { dict["sleepDurationSeconds"] = sleepDur }
         
         return dict

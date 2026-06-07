@@ -14,9 +14,9 @@ This repository serves as a turnkey data pipeline for developers feeding persona
 - **Dynamic Firebase Config (BYODB)**: Configure your private database inside the app by simply copy-pasting your raw `GoogleService-Info.plist` XML. 
 - **Granular HealthKit Syncing**: Reads workouts, step count, active calories, heart rate, respiratory rate, HRV, SpO2, temperature, exercise minutes, floors, sleep, and distance directly from Apple Health.
 - **Google Health / Fitbit Import**: Secure Google OAuth 2.0 flow that fetches sleep sessions, steps, heart rate, resting heart rate, respiratory rate, HRV, SpO2, sleep temperature, active minutes, Active Zone Minutes, calories, distance, floors, and workouts from the Google Health API and writes supported values directly to Apple Health.
-  - *Note on Sleep Vitals*: To ensure imported metrics (HRV, SpO2, Respiratory Rate, Wrist Temperature) correctly appear under the "Sleep" section in Apple Health, they are assigned a timestamp of 03:00 AM. 
-  - *Note on Temperature*: The app utilizes `.appleSleepingWristTemperature` (requires iOS 16+) for more accurate sleep temperature tracking, falling back to general `.bodyTemperature` on older OS versions.
-- **Background Delivery**: Leverages `BGTaskScheduler` and HealthKit workout observers to synchronize Apple Health summaries in the background. Google Health imports currently run from the in-app sync action.
+  - *Note on Sleep Vitals*: To help imported HRV, SpO2, respiratory rate, and temperature line up with the user's sleep window in Apple Health, sleep-derived vitals are assigned a 03:00 AM timestamp for that night.
+  - *Note on Temperature*: Apple exposes `.appleSleepingWristTemperature` as read-only for third-party apps. Imported Fitbit / Google sleep temperature is saved as `.bodyTemperature` with sleep-temperature metadata instead of pretending it is an Apple Watch wrist-temperature sample.
+- **Background Delivery**: Leverages `BGTaskScheduler` and HealthKit workout observers to synchronize automatically. Background runs import recent Google Health / Fitbit data into Apple Health first, then push Apple Health summaries and workouts to Firestore.
 - **Multi-Target Architecture**: The Xcode project includes two schemes:
   1. `FebusHealthSyncIos` (Personal hardcoded build).
   2. `FebusHealthSyncUniversal` (White-label dynamic onboarding build).

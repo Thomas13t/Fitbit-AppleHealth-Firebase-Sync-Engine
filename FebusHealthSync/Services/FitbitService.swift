@@ -39,11 +39,6 @@ class FitbitService: NSObject, ObservableObject {
             HKObjectType.quantityType(forIdentifier: .flightsClimbed)!,
             HKObjectType.workoutType()
         ]
-        if #available(iOS 16.0, *) {
-            if let type = HKObjectType.quantityType(forIdentifier: .appleSleepingWristTemperature) {
-                types.insert(type)
-            }
-        }
         return types
     }()
     
@@ -1089,10 +1084,9 @@ class FitbitService: NSObject, ObservableObject {
         return samples.count
     }
     private func saveGoogleHealthSleepTemperature(_ points: [[String: Any]], fallbackDate: Date) async throws -> Int {
-        var temperatureType = HKObjectType.quantityType(forIdentifier: .bodyTemperature)!
-        if #available(iOS 16.0, *), let sleepTemp = HKObjectType.quantityType(forIdentifier: .appleSleepingWristTemperature) {
-            temperatureType = sleepTemp
-        }
+        // Apple's sleeping wrist temperature type is read-only, so imported
+        // Fitbit/Google sleep temperature must be saved as body temperature.
+        let temperatureType = HKObjectType.quantityType(forIdentifier: .bodyTemperature)!
         var samples: [HKQuantitySample] = []
         let calendar = Calendar.current
         
@@ -1209,7 +1203,7 @@ class FitbitService: NSObject, ObservableObject {
     }
     
     private func saveGoogleHealthExercises(_ points: [[String: Any]]) async throws -> Int {
-        var workouts: [HKWorkout] = []
+        var savedCount = 0
         
         for point in points {
             guard let exercise = point["exercise"] as? [String: Any],
@@ -1244,21 +1238,111 @@ class FitbitService: NSObject, ObservableObject {
                 metadata["FebusAverageHeartRate"] = averageHeartRate
             }
             
-            workouts.append(HKWorkout(
+            try await saveWorkoutWithBuilder(
                 activityType: healthKitWorkoutActivityType(exercise["exerciseType"] as? String),
                 start: start,
                 end: end,
-                duration: end.timeIntervalSince(start),
-                totalEnergyBurned: energy,
-                totalDistance: distance,
+                energy: energy,
+                distance: distance,
                 metadata: metadata
-            ))
+            )
+            savedCount += 1
         }
         
-        if !workouts.isEmpty {
-            try await healthStore.save(workouts)
+        return savedCount
+    }
+
+    private func saveWorkoutWithBuilder(
+        activityType: HKWorkoutActivityType,
+        start: Date,
+        end: Date,
+        energy: HKQuantity?,
+        distance: HKQuantity?,
+        metadata: [String: Any]
+    ) async throws {
+        let configuration = HKWorkoutConfiguration()
+        configuration.activityType = activityType
+        configuration.locationType = .unknown
+
+        let builder = HKWorkoutBuilder(healthStore: healthStore, configuration: configuration, device: .local())
+        var samples: [HKSample] = []
+
+        if let energy, let energyType = HKObjectType.quantityType(forIdentifier: .activeEnergyBurned) {
+            samples.append(HKQuantitySample(type: energyType, quantity: energy, start: start, end: end, metadata: metadata))
         }
-        return workouts.count
+        if let distance, let distanceType = HKObjectType.quantityType(forIdentifier: .distanceWalkingRunning) {
+            samples.append(HKQuantitySample(type: distanceType, quantity: distance, start: start, end: end, metadata: metadata))
+        }
+
+        try await builderBeginCollection(builder, start: start)
+        if !samples.isEmpty {
+            try await builderAddSamples(builder, samples: samples)
+        }
+        try await builderAddMetadata(builder, metadata: metadata)
+        try await builderEndCollection(builder, end: end)
+        _ = try await builderFinishWorkout(builder)
+    }
+
+    private func builderBeginCollection(_ builder: HKWorkoutBuilder, start: Date) async throws {
+        try await withCheckedThrowingContinuation { (continuation: CheckedContinuation<Void, Error>) in
+            builder.beginCollection(withStart: start) { _, error in
+                if let error {
+                    continuation.resume(throwing: error)
+                } else {
+                    continuation.resume()
+                }
+            }
+        }
+    }
+
+    private func builderAddSamples(_ builder: HKWorkoutBuilder, samples: [HKSample]) async throws {
+        try await withCheckedThrowingContinuation { (continuation: CheckedContinuation<Void, Error>) in
+            builder.add(samples) { _, error in
+                if let error {
+                    continuation.resume(throwing: error)
+                } else {
+                    continuation.resume()
+                }
+            }
+        }
+    }
+
+    private func builderAddMetadata(_ builder: HKWorkoutBuilder, metadata: [String: Any]) async throws {
+        try await withCheckedThrowingContinuation { (continuation: CheckedContinuation<Void, Error>) in
+            builder.addMetadata(metadata) { _, error in
+                if let error {
+                    continuation.resume(throwing: error)
+                } else {
+                    continuation.resume()
+                }
+            }
+        }
+    }
+
+    private func builderEndCollection(_ builder: HKWorkoutBuilder, end: Date) async throws {
+        try await withCheckedThrowingContinuation { (continuation: CheckedContinuation<Void, Error>) in
+            builder.endCollection(withEnd: end) { _, error in
+                if let error {
+                    continuation.resume(throwing: error)
+                } else {
+                    continuation.resume()
+                }
+            }
+        }
+    }
+
+    private func builderFinishWorkout(_ builder: HKWorkoutBuilder) async throws -> HKWorkout {
+        try await withCheckedThrowingContinuation { continuation in
+            builder.finishWorkout { workout, error in
+                if let error {
+                    continuation.resume(throwing: error)
+                } else if let workout {
+                    continuation.resume(returning: workout)
+                } else {
+                    continuation.resume(throwing: GoogleHealthSyncError.unauthorized)
+                }
+            }
+        }
     }
     
     private var googleClientID: String? {

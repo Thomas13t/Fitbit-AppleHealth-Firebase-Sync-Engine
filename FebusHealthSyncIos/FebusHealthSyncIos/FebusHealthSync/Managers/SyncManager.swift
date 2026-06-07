@@ -15,6 +15,7 @@ class SyncManager: ObservableObject {
     let healthKitService: HealthKitService
     private let firestoreService: FirestoreService
     private let authService: AuthService
+    private let googleHealthService = FitbitService()
     
     init(healthKitService: HealthKitService, firestoreService: FirestoreService, authService: AuthService) {
         self.healthKitService = healthKitService
@@ -47,16 +48,16 @@ class SyncManager: ObservableObject {
     @objc private func handleBackgroundSync() {
         Task {
             log("Background sync triggered via HealthKit observer.")
-            await performSync(daysBack: 1) // Just recent ones for background sync
+            await performSync(daysBack: 1, googleHealthDaysBack: 1)
         }
     }
     
     func performManualSync() async {
         log("Manual sync started.")
-        await performSync(daysBack: 30)
+        await performSync(daysBack: 30, googleHealthDaysBack: 7)
     }
     
-    private func performSync(daysBack: Int) async {
+    private func performSync(daysBack: Int, googleHealthDaysBack: Int) async {
         guard let user = authService.currentUser else {
             log("Sync failed: No authenticated user.")
             return
@@ -66,6 +67,8 @@ class SyncManager: ObservableObject {
         defer { isSyncing = false }
         
         do {
+            await importGoogleHealthIfLinked(daysBack: googleHealthDaysBack)
+
             log("Fetching workouts from HealthKit...")
             let hkWorkouts = try await healthKitService.fetchWorkouts(daysBack: daysBack)
             log("Found \(hkWorkouts.count) workouts in HealthKit.")
@@ -120,6 +123,12 @@ class SyncManager: ObservableObject {
                     totalSteps: stats.totalSteps,
                     avgHeartRate: stats.avgHeartRate,
                     restingHeartRate: stats.restingHeartRate,
+                    respiratoryRate: stats.respiratoryRate,
+                    heartRateVariabilityMs: stats.heartRateVariabilityMs,
+                    oxygenSaturationPercent: stats.oxygenSaturationPercent,
+                    bodyTemperatureCelsius: stats.bodyTemperatureCelsius,
+                    exerciseMinutes: stats.exerciseMinutes,
+                    flightsClimbed: stats.flightsClimbed,
                     sleepDurationSeconds: stats.totalSleepDurationSeconds,
                     createdAt: Date(),
                     updatedAt: Date()
@@ -144,7 +153,43 @@ class SyncManager: ObservableObject {
     
     func performBackgroundTasksSync() async {
         log("Background Task Sync started.")
-        await performSync(daysBack: 2)
+        await performSync(daysBack: 2, googleHealthDaysBack: 2)
+    }
+
+    private func importGoogleHealthIfLinked(daysBack: Int) async {
+        guard daysBack > 0 else { return }
+        guard googleHealthService.accessToken != nil else {
+            log("Google Health not linked; skipping Google import.")
+            return
+        }
+
+        let daysToSync = min(daysBack, 7)
+        let calendar = Calendar.current
+        let formatter = DateFormatter()
+        formatter.dateFormat = "MMM d"
+        var failures: [String] = []
+
+        log("Importing Google Health into Apple Health for the last \(daysToSync) day(s)...")
+        for i in 0..<daysToSync {
+            guard let date = calendar.date(byAdding: .day, value: -i, to: Date()) else { continue }
+
+            let sleepResult = await googleHealthService.syncSleep(for: date)
+            if !sleepResult.success {
+                failures.append("\(formatter.string(from: date)) sleep: \(sleepResult.message)")
+            }
+
+            let activityResult = await googleHealthService.syncActivityAndHeart(for: date)
+            if !activityResult.success {
+                failures.append("\(formatter.string(from: date)) activity: \(activityResult.message)")
+            }
+        }
+
+        if let firstFailure = failures.first {
+            let suffix = failures.count > 1 ? " (+\(failures.count - 1) more)" : ""
+            log("Google Health import finished with issue: \(firstFailure)\(suffix)")
+        } else {
+            log("Google Health import completed.")
+        }
     }
     
     private func formatDate(_ date: Date) -> String {
